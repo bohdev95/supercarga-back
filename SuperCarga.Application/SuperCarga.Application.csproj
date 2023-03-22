@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+	<Nullable>enable</Nullable>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="FluentValidation" Version="10.3.4" />
+		<PackageReference Include="MediatR" Version="9.0.0" />
+		<PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="9.0.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.10" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Domain\Contracts\Drivers\Commands\PickedUp\" />
+	  <Folder Include="Domain\Drivers\Customers\Abstraction\" />
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,58 @@
+Zrobione:
+
+Driver
+	FindJobs
+		/drivers/jobs/list/all
+		/drivers/jobs/list/favorites
+		/drivers/jobs/details
+		/drivers/jobs/favorites/add
+		/drivers/jobs/favorites/remove
+		/drivers/proposals/add
+
+	Proposals 
+		/drivers/proposals/list/active
+		/drivers/proposals/list/archived
+		/drivers/proposals/details
+
+	Contract
+		/drivers/contracts/start
+		/drivers/contracts/cancel
+		/drivers/contracts/delivered
+		/drivers/contracts/picked-up
+		/drivers/contracts/list/active
+		/drivers/contracts/list/finished
+		/drivers/contracts/details
+
+	drivers
+		/drivers/drivers/details
+		/drivers/drivers/edit
+		/drivers/drivers/upload-driving-license
+		/drivers/drivers/change-image
+		/drivers/drivers/register
+		/drivers/drivers/accept-terms
+
+Customer
+	AddJob 
+		/customers/jobs/add
+		/vehicule-types/check
+		/location/check-distance
+	
+	Jobs
+		/customers/jobs/list/active
+		/customers/jobs/list/archived
+
+	Proposals	
+		/customers/proposals/list/all
+		/customers/proposals/list/favorites
+		/customers/proposals/hire
+		/customers/proposals/favorites/add
+		/customers/proposals/favorites/remove
+
+Admin
+	Costs
+		/costs/set
+		/costs/get-actual
+
+calculate your transport 
+	/free-estimation/calculate
+	

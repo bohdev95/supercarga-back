@@ -1,0 +1,17 @@
+jaki jest tutaj flow?
+	driaver tworzy proposal -> pending
+	customer akceptuje -> accepted
+	driver klika "create contract" -> status zmienia sie na hired, tworzony jest kontrakt
+	po skończonej robocie -> closed (tez zmienic statusy dla tych co są w pending)	
+
+
+driver tworzy kontrakt? - odp. tak.
+
+na liscie kontraktów nie mamy danych clienta tak jak dla proposal i jobs. Tak ma zostać? - odp. tak
+
+payment type? - status płatności kontraktu
+-
+
+status drivera? - driver musi sie zweryfikowac tzn. wysłac zdjecie prawa jazdy
+i na statusie administratora bedzie opcja akceptowania
+

@@ -1,0 +1,34 @@
+Customer
+	My jobs 
+		- jest tu info "Hired" - czy to oznacza ze moze byc kilka kontraktów do jednego joba - odp. Tak.
+		- co to są "new" proposals? Te z ostatniej doby? - odp. te które nie zostały odklikane przez customera
+		- brak ekranu dla "Archived" - odp. tak jak active
+
+
+Driver
+	Find job
+		-Fixed price to stały tekst? Podajemy cene za kilometr? - odp. tak, za kilometr
+
+	Proposals
+		- jakie mamy statusy proposalu i jak sie zmieniają? - odp. Pending i accepted i closed
+
+		Pending - kiedy job offer nadal jest otwarta, ale klient nie zatrudnil jeszcze
+		Accetped - kiedy client zatrudnil danego drivera
+		closed - kiedy job offer zostala zamknieta, klient zatrudnil kogo chcial
+
+
+
+
+
+
+
+różne ustalenia:
+
+dodanie tabeli z parametryzacją cenay za loading i unloading + AdminController z mozliwoscą modyfikacji vechicules i ceny za loading/unloading
+
+listy defaultowo sortujemy po dacie dodania
+
+customer dostaje powiadomienia (w apce albo email) ze ma nowy proposal (?? do dodania do czatu)
+
+info w userze ze odklikał terms and conditions
+
