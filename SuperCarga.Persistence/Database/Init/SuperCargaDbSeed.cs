@@ -279,9 +279,23 @@ namespace SuperCarga.Persistence.Database.Init
                 Balance = 10000
             };
 
+            var customerFinanceHistory = new FinanceHistory
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                FinanceId = customerFinance.Id,
+                Operation = FinanceOperation.Deposit,
+                BalanceBefore = 0,
+                BalanceAfter = 10000,
+                FromUserId = null,
+                ToUserId = null,
+                RelatedContractId = null
+            };
+
             ctx.Customers.Add(customer);
             ctx.Users.Add(customerUser);
             ctx.Finances.Add(customerFinance);
+            ctx.FinancesHistory.Add(customerFinanceHistory);
 
             #endregion
 
@@ -321,9 +335,23 @@ namespace SuperCarga.Persistence.Database.Init
                 Balance = 10000
             };
 
+            var driverFinanceHistory = new FinanceHistory
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                FinanceId = driverFinance.Id,
+                Operation = FinanceOperation.Deposit,
+                BalanceBefore = 0,
+                BalanceAfter = 10000,
+                FromUserId = null,
+                ToUserId = null,
+                RelatedContractId = null
+            };
+
             ctx.Drivers.Add(driver);
             ctx.Users.Add(driverUser);
             ctx.Finances.Add(driverFinance);    
+            ctx.FinancesHistory.Add(driverFinanceHistory);
 
             #endregion
 
@@ -395,7 +423,7 @@ namespace SuperCarga.Persistence.Database.Init
 
             ctx.SaveChanges();
 
-            driversService.UpdateDriverRates(driver.Id).GetAwaiter().GetResult();
+            driversService.UpdateDriverRates(driver.Id, true).GetAwaiter().GetResult();
         }
 
         private static bool GenerateJob(
@@ -516,7 +544,8 @@ namespace SuperCarga.Persistence.Database.Init
                         PricePerDistance = costs.PricePerDistance,
                         TotalPrice = costs.TotalPrice,
                         ServiceFee = costs.ServiceFee,
-                        Price = costs.Price
+                        Price = costs.Price,
+                        PaymentState = ContractPaymentState.OnDeliveryConfirmation
                     };
                     ctx.Contracts.Add(contract);
 
@@ -581,7 +610,8 @@ namespace SuperCarga.Persistence.Database.Init
                         PricePerDistance = costs.PricePerDistance,
                         TotalPrice = costs.TotalPrice,
                         ServiceFee = costs.ServiceFee,
-                        Price = costs.Price
+                        Price = costs.Price,
+                        PaymentState = ContractPaymentState.OnDeliveryConfirmation
                     };
 
                     var additions = costs.Additions.Select(x => new ContractAdditionalCost

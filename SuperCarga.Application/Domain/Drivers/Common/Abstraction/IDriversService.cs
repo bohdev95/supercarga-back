@@ -4,6 +4,6 @@
     {
         bool DriverExists(Guid id);
 
-        Task UpdateDriverRates(Guid id);
+        Task UpdateDriverRates(Guid id, bool save);
     }
 }

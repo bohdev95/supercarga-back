@@ -20,6 +20,7 @@ namespace SuperCarga.Persistence.Database.EntityConfigurations
             builder.Property(i => i.DriverId).HasColumnName("driver_id");
             builder.Property(i => i.CustomerId).HasColumnName("customer_id");
             builder.Property(i => i.State).HasColumnName("state");
+            builder.Property(i => i.PaymentState).HasColumnName("payment_state");
             builder.Property(i => i.PricePerKm).HasColumnName("price_per_km");
             builder.Property(i => i.PricePerDistance).HasColumnName("price_per_distance");
             builder.Property(i => i.TotalPrice).HasColumnName("total_price");

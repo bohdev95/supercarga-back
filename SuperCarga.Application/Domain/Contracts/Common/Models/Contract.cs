@@ -25,6 +25,8 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Models
         public Customer Customer { get; set; }
 
         public string State { get; set; }
+        
+        public string PaymentState { get; set; } 
 
         #region costs
 

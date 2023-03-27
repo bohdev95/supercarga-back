@@ -16,6 +16,7 @@
 	<ItemGroup>
 	  <Folder Include="Domain\Contracts\Drivers\Commands\PickedUp\" />
 	  <Folder Include="Domain\Drivers\Customers\Abstraction\" />
+	  <Folder Include="Domain\Finances\Queries\GetOperationsHistory\" />
 	</ItemGroup>
 
 </Project>

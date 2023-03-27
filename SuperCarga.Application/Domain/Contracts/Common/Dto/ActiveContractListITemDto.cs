@@ -19,7 +19,7 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Dto
 
         public AddressDto Destination { get; set; }
 
-        public string PaymentState { get; set; } //TODO
+        public string PaymentState { get; set; } 
 
         public string State { get; set; }
 

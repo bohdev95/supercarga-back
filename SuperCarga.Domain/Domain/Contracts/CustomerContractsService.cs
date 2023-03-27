@@ -14,6 +14,7 @@ using SuperCarga.Application.Domain.Costs.Abstraction;
 using SuperCarga.Application.Domain.Costs.Dto;
 using SuperCarga.Application.Domain.Drivers.Common.Abstraction;
 using SuperCarga.Application.Domain.Drivers.Customers.Dto;
+using SuperCarga.Application.Domain.Finances.Model;
 using SuperCarga.Application.Domain.Location.Dto;
 using SuperCarga.Application.Domain.Proposals.Common.Models;
 using SuperCarga.Application.Exceptions;
@@ -32,7 +33,10 @@ namespace SuperCarga.Domain.Domain.Contracts
         private readonly ICostsService costsService;
         private readonly IDriversService driversService;
 
-        public CustomerContractsService(SuperCargaContext ctx, ICostsService costsService, IDriversService driversService) : base(ctx)
+        public CustomerContractsService(
+            SuperCargaContext ctx, 
+            ICostsService costsService, 
+            IDriversService driversService) : base(ctx)
         {
             this.costsService = costsService;
             this.driversService = driversService;
@@ -40,45 +44,168 @@ namespace SuperCarga.Domain.Domain.Contracts
 
         public async Task ConfirmDelivery(CustomerConfirmDeliveryCommand request)
         {
-            await UpdateContractStatus(async contract =>
-            {
-                contract.State = ContractState.DeliveredConfirmed;
-            },
-            request.Data.ContractId,
-            request.User.CustomerId.Value);
-        }
-
-        public async Task Finalize(CustomerFinalizeCommand request)
-        {
-            await UpdateContractStatus(async contract =>
-            {
-                contract.State = ContractState.Closed;
-                contract.Rating = request.Data.Rating;
-                contract.RatingComment = request.Data.RatingComment;
-            },
-            request.Data.ContractId,
-            request.User.CustomerId.Value);
-
-            var driverId = await ctx.Contracts
-                .Where(x => x.Id == request.Data.ContractId)
-                .Select(x => x.DriverId)
-                .FirstOrDefaultAsync();
-
-            await driversService.UpdateDriverRates(driverId);
-        }
-
-        private async Task UpdateContractStatus(Func<Contract, Task> update, Guid contractId, Guid customerId)
-        {
             var contract = await ctx.Contracts
-                .Where(x => x.Id == contractId)
+                .Include(x => x.Driver)
+                .ThenInclude(x => x.User)
+                .Include(x => x.Customer)
+                .ThenInclude(x => x.User)
+                .Where(x => x.Id == request.Data.ContractId)
                 .FirstOrDefaultAsync();
 
-            if (contract.CustomerId != customerId)
+            if (contract.CustomerId != request.User.CustomerId.Value)
             {
                 throw new ForbiddenException();
             }
 
-            await UpdateContractStatus(update, contract);
+            await UpdateContractStatus(contract, ContractState.DeliveredConfirmed, false);
+
+            await UnholdAndTransfer(contract, false);
+
+            await ctx.SaveChangesAsync();
+        }
+
+        private async Task UnholdAndTransfer(Contract contract, bool save)
+        {
+            var customerFinance = await ctx.Finances
+                .Include(x => x.Holds)
+                .Where(x => x.UserId == contract.Customer.User.Id)
+                .FirstOrDefaultAsync();
+
+            var hold = customerFinance.Holds
+                .Where(x => x.RelatedContractId == contract.Id)
+                .FirstOrDefault();
+
+            ctx.BalanceHolds.Remove(hold);
+
+            var customerHistory = new FinanceHistory
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                FinanceId = customerFinance.Id,
+                Operation = FinanceOperation.Transfer,
+                BalanceBefore = customerFinance.Balance,
+                BalanceAfter = customerFinance.Balance,
+                OperationValue = hold.Value,
+                RelatedContractId = contract.Id,
+                FromUserId = contract.Customer.User.Id,
+                ToUserId = contract.Driver.User.Id,
+            };
+            ctx.FinancesHistory.Add(customerHistory);
+
+            var driverFinance = await ctx.Finances
+                .Where(x => x.UserId == contract.Driver.User.Id)
+                .FirstOrDefaultAsync();
+
+            var newDriverBalance = driverFinance.Balance + hold.Value;
+
+            var driverHistory = new FinanceHistory
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                FinanceId = driverFinance.Id,
+                Operation = FinanceOperation.Transfer,
+                BalanceBefore = driverFinance.Balance,
+                BalanceAfter = newDriverBalance,
+                OperationValue = hold.Value,
+                RelatedContractId = contract.Id,
+                FromUserId = contract.Customer.User.Id,
+                ToUserId = contract.Driver.User.Id,
+            };
+            ctx.FinancesHistory.Add(driverHistory);
+
+            driverFinance.Balance = newDriverBalance;
+
+            contract.PaymentState = ContractPaymentState.PrepaymentReceived;
+
+            if(save)
+            {
+                await ctx.SaveChangesAsync();
+            }
+        }
+
+        public async Task Finalize(CustomerFinalizeCommand request)
+        {
+            var contract = await ctx.Contracts
+                .Include(x => x.Driver)
+                .ThenInclude(x => x.User)
+                .Include(x => x.Customer)
+                .ThenInclude(x => x.User)
+                .Include(x => x.Proposal)
+                .Where(x => x.Id == request.Data.ContractId)
+                .FirstOrDefaultAsync();
+
+            if (contract.CustomerId != request.User.CustomerId.Value)
+            {
+                throw new ForbiddenException();
+            }
+
+            await UpdateContractStatus(contract, ContractState.Closed, false);
+
+            contract.Rating = request.Data.Rating;
+            contract.RatingComment = request.Data.RatingComment;
+            contract.Proposal.State = ProposalState.Closed;
+
+            await driversService.UpdateDriverRates(contract.DriverId, false);
+
+            await Transfer(contract, request.Data.Payment, false);
+
+            await ctx.SaveChangesAsync();
+        }
+
+        private async Task Transfer(Contract contract, decimal paymentValue, bool save)
+        {
+            var customerFinance = await ctx.Finances
+                .Where(x => x.UserId == contract.Customer.User.Id)
+                .FirstOrDefaultAsync();
+
+            var newCustomerBalance = customerFinance.Balance - paymentValue;
+
+            var customerHistory = new FinanceHistory
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                FinanceId = customerFinance.Id,
+                Operation = FinanceOperation.Transfer,
+                BalanceBefore = customerFinance.Balance,
+                BalanceAfter = newCustomerBalance,
+                OperationValue = paymentValue,
+                RelatedContractId = contract.Id,
+                FromUserId = contract.Customer.User.Id,
+                ToUserId = contract.Driver.User.Id,
+            };
+            ctx.FinancesHistory.Add(customerHistory);
+
+            customerFinance.Balance = newCustomerBalance;
+
+            var driverFinance = await ctx.Finances
+                .Where(x => x.UserId == contract.Driver.User.Id)
+                .FirstOrDefaultAsync();
+
+            var newDriverBalance = driverFinance.Balance + paymentValue;
+
+            var driverHistory = new FinanceHistory
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                FinanceId = driverFinance.Id,
+                Operation = FinanceOperation.Transfer,
+                BalanceBefore = driverFinance.Balance,
+                BalanceAfter = newDriverBalance,
+                OperationValue = paymentValue,
+                RelatedContractId = contract.Id,
+                FromUserId = contract.Customer.User.Id,
+                ToUserId = contract.Driver.User.Id,
+            };
+            ctx.FinancesHistory.Add(driverHistory);
+
+            driverFinance.Balance = newDriverBalance;
+
+            contract.PaymentState = ContractPaymentState.PaidFull;
+
+            if (save)
+            {
+                await ctx.SaveChangesAsync();
+            }
         }
 
         public async Task<Guid> AddContract(AddContractCommand request)
@@ -119,6 +246,7 @@ namespace SuperCarga.Domain.Domain.Contracts
                 DriverId = proposal.DriverId,
                 CustomerId = proposal.Job.CustomerId,
                 State = ContractState.Created,
+                PaymentState = ContractPaymentState.OnDeliveryConfirmation,
                 PricePerKm = costs.PricePerKm,
                 PricePerDistance = costs.PricePerDistance,
                 TotalPrice = costs.TotalPrice,
@@ -146,18 +274,72 @@ namespace SuperCarga.Domain.Domain.Contracts
 
             proposal.State = ProposalState.Accepted;
 
-            var driver = await ctx.Drivers
-                .Where(x => x.Id == proposal.DriverId)
-                .FirstOrDefaultAsync();
+            await UpdateDriversContracts(proposal.DriverId);
 
-            driver.Contracts++;
+            //TODO transfer fee to SC account
+            await AddBalanceHold(request.User.Id, request.Data.Payment, contract.Id, false);
 
             await ctx.Contracts.AddAsync(contract);
             await ctx.ContractAdditionalCosts.AddRangeAsync(additions);
             await ctx.ContractHistories.AddAsync(history);
+            
             await ctx.SaveChangesAsync();
 
             return contract.Id;
+        }
+
+        private async Task UpdateDriversContracts(Guid driverId)
+        {
+            var driver = await ctx.Drivers
+                .Where(x => x.Id == driverId)
+                .FirstOrDefaultAsync();
+
+            driver.Contracts++;
+        }
+
+        private async Task AddBalanceHold(Guid userId, decimal holdValue, Guid contractId, bool save)
+        {
+            var customerFinances = await ctx.Finances
+                .Where(x => x.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (customerFinances.Balance < holdValue)
+            {
+                throw new ValidationException("Payment value can not be bigger than user Balance.");
+            }
+
+            var newBalance = customerFinances.Balance - holdValue;
+
+            var financeHistory = new FinanceHistory
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                FinanceId = customerFinances.Id,
+                Operation = FinanceOperation.Hold,
+                BalanceBefore = customerFinances.Balance,
+                BalanceAfter = newBalance,
+                OperationValue = holdValue,
+                RelatedContractId = contractId
+            };
+
+            var balanceHold = new BalanceHold
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                FinanceId = customerFinances.Id,
+                Value = holdValue,
+                RelatedContractId = contractId
+            };
+
+            customerFinances.Balance = newBalance;
+
+            await ctx.FinancesHistory.AddAsync(financeHistory);
+            await ctx.BalanceHolds.AddAsync(balanceHold);
+
+            if (save)
+            {
+                await ctx.SaveChangesAsync();
+            }
         }
 
         public async Task<CustomerContractDetailsDto> GetContractDetails(GetCustomerContractDetailsQuery request)
@@ -178,22 +360,21 @@ namespace SuperCarga.Domain.Domain.Contracts
                     Description = x.Job.Description,
                     Tittle = x.Job.Tittle,
                     Distance = x.Job.Distance,
-                    PricePerKm = x.PricePerKm,
                     PickupDate = x.Job.PickupDate,
                     DeliveryDate = x.Job.DeliveryDate,
                     Cargo = x.Job.GetDimensionsCargo(),
                     Origin = x.Job.GetOrigin(),
                     Destination = x.Job.GetDestination(),
-                    Driver = x.Driver.GetCustomerDriverDto(),
-                    PaymentState = "On delivery confirmation", //TODO
+                    PaymentState = x.PaymentState,
                     State = x.State,
                     StateChanged = x.History.OrderByDescending(x => x.Created).Select(x => x.Created).FirstOrDefault(),
                     IsInDispute = false, //TODO
-                    Price = x.Price,
                     PickUpCargoImagePath = x.PickUpCargoImagePath,
                     DeliveryCargoImagePath = x.DeliveryCargoImagePath,
                     PickUpProofImagePath = x.PickUpProofImagePath,
-                    DeliveryProofImagePath = x.DeliveryProofImagePath
+                    DeliveryProofImagePath = x.DeliveryProofImagePath,
+                    Driver = x.Driver.GetCustomerDriverDto(),
+                    CostsSummary = x.GetCostsSummary()
                 })
                 .FirstOrDefaultAsync();
 

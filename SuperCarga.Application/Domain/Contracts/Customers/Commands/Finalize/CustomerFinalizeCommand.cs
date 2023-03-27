@@ -12,6 +12,8 @@ namespace SuperCarga.Application.Domain.Contracts.Customers.Commands.Finalize
     {
         public Guid ContractId { get; set; }
 
+        public decimal Payment { get; set; }
+
         public decimal Rating { get; set; }
 
         public string RatingComment { get; set; }

@@ -9,6 +9,6 @@ namespace SuperCarga.Application.Domain.Location.Abstraction
 {
     public interface IDistanceService
     {
-        Task<int> CheckDistance(AddressDto origin, AddressDto destination);
+        Task<int?> CheckDistance(AddressDto origin, AddressDto destination);
     }
 }

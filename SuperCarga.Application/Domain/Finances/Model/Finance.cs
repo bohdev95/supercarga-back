@@ -12,5 +12,9 @@ namespace SuperCarga.Application.Domain.Finances.Model
         public Guid UserId { get; set; }
 
         public decimal Balance { get; set; }
+
+        public List<FinanceHistory> History { get; set; }
+
+        public List<BalanceHold> Holds { get; set; }
     }
 }

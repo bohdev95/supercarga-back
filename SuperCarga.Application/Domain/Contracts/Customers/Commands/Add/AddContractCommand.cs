@@ -12,7 +12,7 @@ namespace SuperCarga.Application.Domain.Contracts.Customers.Commands.Add
     {
         public Guid ProposalId { get; set; }
 
-        //public decimal PayUpfront { get; set; } TODO payments
+        public decimal Payment { get; set; }
     }
 
     public class AddContractCommand : UserRequest<AddContractRequest, AddContractCommandResponse>

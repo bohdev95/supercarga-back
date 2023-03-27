@@ -27,6 +27,8 @@ namespace SuperCarga.Persistence.Database
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<Finance> Finances { get; set; }
+        public DbSet<FinanceHistory> FinancesHistory { get; set; }
+        public DbSet<BalanceHold> BalanceHolds { get; set; }
         public DbSet<Customer> Customers { get; set; }
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Cost> Costs { get; set; }
@@ -50,6 +52,8 @@ namespace SuperCarga.Persistence.Database
             modelBuilder.ApplyConfiguration(new RoleEntityConfiguration());
             modelBuilder.ApplyConfiguration(new UserRoleEntityConfiguration());
             modelBuilder.ApplyConfiguration(new FinanceEntityConfiguration());
+            modelBuilder.ApplyConfiguration(new FinanceHistoryEntityConfiguration());
+            modelBuilder.ApplyConfiguration(new BalanceHoldsEntityConfiguration());
             modelBuilder.ApplyConfiguration(new CustomerEntityConfiguration());
             modelBuilder.ApplyConfiguration(new CustomerFavoriteProposalEntityConfiguration());
             modelBuilder.ApplyConfiguration(new DriverEntityConfiguration());

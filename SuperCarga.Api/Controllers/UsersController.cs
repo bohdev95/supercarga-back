@@ -63,6 +63,7 @@ namespace SuperCarga.Api.Controllers
         /// <remarks>
         /// Change user image
         /// </remarks>
+        [Authorize]
         [HttpPost("change-image")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ChangeImageCommandResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
@@ -82,6 +83,7 @@ namespace SuperCarga.Api.Controllers
         /// <remarks>
         /// Using to accept terms and conditions by user
         /// </remarks>
+        [Authorize]
         [HttpPost("accept-terms")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AcceptTermsCommandResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]

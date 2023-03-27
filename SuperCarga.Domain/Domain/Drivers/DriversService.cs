@@ -14,7 +14,7 @@ namespace SuperCarga.Domain.Domain.Drivers
 
         public bool DriverExists(Guid id) => ctx.Drivers.Where(x => x.Id == id).Any();
 
-        public async Task UpdateDriverRates(Guid id)
+        public async Task UpdateDriverRates(Guid id, bool save)
         {
             var driver = await ctx.Drivers
                 .Where(x => x.Id == id)
@@ -39,7 +39,10 @@ namespace SuperCarga.Domain.Domain.Drivers
             driver.RatedContracts = driverRatesCount;
             driver.Rating = rating;
 
-            await ctx.SaveChangesAsync();
+            if(save)
+            {
+                await ctx.SaveChangesAsync();
+            }
         }
     }
 }
