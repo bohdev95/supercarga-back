@@ -276,26 +276,29 @@ namespace SuperCarga.Persistence.Database.Init
                 Id = Guid.NewGuid(),
                 Created = DateTime.Now,
                 UserId = customerUser.Id,
-                Balance = 10000
+                Balance = 10000000,
+                AvailableBalance = 10000000
             };
 
-            var customerFinanceHistory = new FinanceHistory
+            var customerPayment = new Payment
             {
                 Id = Guid.NewGuid(),
                 Created = DateTime.Now,
-                FinanceId = customerFinance.Id,
                 Operation = FinanceOperation.Deposit,
-                BalanceBefore = 0,
-                BalanceAfter = 10000,
+                OperationValue = 10000000,
+                FromUserBalanceBefore = null,
+                FromUserBalanceAfter = null,
                 FromUserId = null,
-                ToUserId = null,
+                ToUserBalanceBefore = 0,
+                ToUserBalanceAfter = 10000000,
+                ToUserId = customerUser.Id,
                 RelatedContractId = null
             };
 
             ctx.Customers.Add(customer);
             ctx.Users.Add(customerUser);
             ctx.Finances.Add(customerFinance);
-            ctx.FinancesHistory.Add(customerFinanceHistory);
+            ctx.Payments.Add(customerPayment);
 
             #endregion
 
@@ -332,26 +335,13 @@ namespace SuperCarga.Persistence.Database.Init
                 Id = Guid.NewGuid(),
                 Created = DateTime.Now,
                 UserId = driverUser.Id,
-                Balance = 10000
-            };
-
-            var driverFinanceHistory = new FinanceHistory
-            {
-                Id = Guid.NewGuid(),
-                Created = DateTime.Now,
-                FinanceId = driverFinance.Id,
-                Operation = FinanceOperation.Deposit,
-                BalanceBefore = 0,
-                BalanceAfter = 10000,
-                FromUserId = null,
-                ToUserId = null,
-                RelatedContractId = null
+                Balance = 0,
+                AvailableBalance = 0
             };
 
             ctx.Drivers.Add(driver);
             ctx.Users.Add(driverUser);
             ctx.Finances.Add(driverFinance);    
-            ctx.FinancesHistory.Add(driverFinanceHistory);
 
             #endregion
 
@@ -375,7 +365,17 @@ namespace SuperCarga.Persistence.Database.Init
             adminUser.EmailNormalized = adminUser.Email.ToUpper();
             adminUser.Password = new PasswordHasher<User>().HashPassword(driverUser, "admin");
 
+            var adminFinance = new Finance
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                UserId = adminUser.Id,
+                Balance = 0,
+                AvailableBalance = 0
+            };
+
             ctx.Users.Add(adminUser);
+            ctx.Finances.Add(adminFinance);
 
             #endregion
 
@@ -399,6 +399,10 @@ namespace SuperCarga.Persistence.Database.Init
                 .Where(x => x.User.Email == "test_customer@sc.com")
                 .Single();
 
+            var admin = ctx.Users
+                .Where(x => x.Email == "admin@sc.com")
+                .Single();
+
             var vehicules = ctx.VehiculeTypes.ToList();
 
             var r = new Random();
@@ -408,7 +412,7 @@ namespace SuperCarga.Persistence.Database.Init
 
             do
             {
-                var added = ctx.GenerateJob(customer, driver, vehicules, costsService, i, r);
+                var added = ctx.GenerateJob(customer, driver, admin, vehicules, costsService, i, r);
                 if (added)
                 {
                     i++;
@@ -430,6 +434,7 @@ namespace SuperCarga.Persistence.Database.Init
             this SuperCargaContext ctx,
             Customer customer, 
             Driver driver, 
+            User admin,
             List<VehiculeType> vehicules, 
             ICostsService costsService,
             int index,
@@ -568,6 +573,59 @@ namespace SuperCarga.Persistence.Database.Init
                     };
                     ctx.ContractHistories.Add(contractHistory);
 
+                    var customerFin = ctx.Finances
+                        .Where(x => x.UserId == customer.User.Id)
+                        .FirstOrDefault();
+
+                    var driverFin = ctx.Finances
+                        .Where(x => x.UserId == driver.User.Id)
+                        .FirstOrDefault();
+
+                    var adminFin = ctx.Finances
+                        .Where(x => x.UserId == admin.Id)
+                        .FirstOrDefault();
+
+                    var paymentFee = new Payment
+                    {
+                        Id = Guid.NewGuid(),
+                        Created = DateTime.Now,
+                        Operation = FinanceOperation.Fee,
+                        OperationValue = costs.ServiceFee,
+                        FromUserBalanceBefore = customerFin.Balance,
+                        FromUserBalanceAfter = customerFin.Balance - costs.ServiceFee,
+                        FromUserId = customer.User.Id,
+                        ToUserBalanceBefore = adminFin.Balance,
+                        ToUserBalanceAfter = adminFin.Balance + costs.ServiceFee,
+                        ToUserId = admin.Id,
+                        RelatedContractId = contract.Id
+                    };
+                    ctx.Payments.Add(paymentFee);
+                    customerFin.Balance = customerFin.Balance - costs.ServiceFee;
+                    customerFin.AvailableBalance = customerFin.AvailableBalance - costs.ServiceFee;
+                    adminFin.Balance = adminFin.Balance + costs.ServiceFee;
+                    adminFin.AvailableBalance = adminFin.AvailableBalance + costs.ServiceFee;
+
+                    var driversPayment = costs.TotalPrice / 2 - costs.ServiceFee;
+                    var paymentForDriver = new Payment
+                    {
+                        Id = Guid.NewGuid(),
+                        Created = DateTime.Now,
+                        Operation = FinanceOperation.Transfer,
+                        OperationValue = driversPayment,
+                        FromUserBalanceBefore = customerFin.Balance,
+                        FromUserBalanceAfter = customerFin.Balance - driversPayment,
+                        FromUserId = customer.User.Id,
+                        ToUserBalanceBefore = driverFin.Balance,
+                        ToUserBalanceAfter = driverFin.Balance + driversPayment,
+                        ToUserId = driver.User.Id,
+                        RelatedContractId = contract.Id
+                    };
+                    ctx.Payments.Add(paymentForDriver);
+                    customerFin.Balance = customerFin.Balance - driversPayment;
+                    customerFin.AvailableBalance = customerFin.AvailableBalance - driversPayment;
+                    driverFin.Balance = driverFin.Balance + driversPayment;
+                    driverFin.AvailableBalance = driverFin.AvailableBalance + driversPayment;
+
                     if (RandomBool(2))
                     {
                         proposal.State = ProposalState.Closed;
@@ -583,6 +641,27 @@ namespace SuperCarga.Persistence.Database.Init
                             State = ContractState.Closed
                         };
                         ctx.ContractHistories.Add(contractHistory1);
+
+                        var driversPayment2 = costs.TotalPrice / 2;
+                        var paymentForDriver2 = new Payment
+                        {
+                            Id = Guid.NewGuid(),
+                            Created = DateTime.Now,
+                            Operation = FinanceOperation.Transfer,
+                            OperationValue = driversPayment2,
+                            FromUserBalanceBefore = customerFin.Balance,
+                            FromUserBalanceAfter = customerFin.Balance - driversPayment2,
+                            FromUserId = customer.User.Id,
+                            ToUserBalanceBefore = driverFin.Balance,
+                            ToUserBalanceAfter = driverFin.Balance + driversPayment2,
+                            ToUserId = driver.User.Id,
+                            RelatedContractId = contract.Id
+                        };
+                        ctx.Payments.Add(paymentForDriver2);
+                        customerFin.Balance = customerFin.Balance - driversPayment2;
+                        customerFin.AvailableBalance = customerFin.AvailableBalance - driversPayment2;
+                        driverFin.Balance = driverFin.Balance + driversPayment2;
+                        driverFin.AvailableBalance = driverFin.AvailableBalance + driversPayment2;
                     }
                 }
                 else if (proposal.State == ProposalState.Accepted)

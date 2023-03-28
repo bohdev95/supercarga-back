@@ -52,5 +52,7 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Dto
         public string DeliveryProofImagePath { get; set; }
 
         public CostsSummaryDto CostsSummary { get; set; }
+
+        public List<ContractPaymentDto> Payments { get; set; }
     }
 }

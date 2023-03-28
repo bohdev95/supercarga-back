@@ -5,6 +5,6 @@
         public const string Deposit = "Deposit";
         public const string Withdraw = "Withdraw";
         public const string Transfer = "Transfer";
-        public const string Hold = "Hold";
+        public const string Fee = "Fee";
     }
 }

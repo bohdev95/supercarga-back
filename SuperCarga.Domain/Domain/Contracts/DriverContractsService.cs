@@ -108,6 +108,8 @@ namespace SuperCarga.Domain.Domain.Contracts
         public async Task<DriverContractDetailsDto> GetContractDetails(GetDriverContractDetailsQuery request)
         {
             var dto = await ctx.Contracts
+                .Include(x => x.Payments)
+                .Include(x => x.Additions)
                 .Include(x => x.Job)
                 .ThenInclude(x => x.VehiculeType)
                 .Include(x => x.Customer)
@@ -137,7 +139,8 @@ namespace SuperCarga.Domain.Domain.Contracts
                     PickUpProofImagePath = x.PickUpProofImagePath,
                     DeliveryProofImagePath = x.DeliveryProofImagePath,
                     Customer = x.Customer.GetDriverCustomerDto(),
-                    CostsSummary = x.GetCostsSummary()
+                    CostsSummary = x.GetCostsSummary(),
+                    Payments = x.GetContractPayment()
                 })
                 .FirstOrDefaultAsync();
 

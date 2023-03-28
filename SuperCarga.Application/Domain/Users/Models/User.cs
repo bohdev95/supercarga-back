@@ -39,6 +39,10 @@ namespace SuperCarga.Application.Domain.Users.Models
         public string VerificationState { get; set; }
 
         public Finance Finance { get; set; } 
+
+        public List<Payment> FromPayments { get; set; }
+
+        public List<Payment> ToPayments { get; set; }
     }
 
     public static class UsersExtensions

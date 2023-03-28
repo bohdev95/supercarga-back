@@ -14,7 +14,7 @@ namespace SuperCarga.Persistence.Registrations
         {
             services.AddDbContext<SuperCargaContext>(options => options.UseNpgsql(cs));
 
-            //services.SeedDb();
+            services.SeedDb();
 
             return services;
         }
@@ -34,7 +34,7 @@ namespace SuperCarga.Persistence.Registrations
             ctx.AddVechiculeTypes();
             ctx.AddRoles();
             ctx.AddUsers(imageStoreConfig.Users);
-            ctx.AddJobs(costsService, driversService, 2500); 
+            ctx.AddJobs(costsService, driversService, 1000); 
         }
     }
 }

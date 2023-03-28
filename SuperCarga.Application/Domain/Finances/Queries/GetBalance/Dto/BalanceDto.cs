@@ -10,6 +10,8 @@ namespace SuperCarga.Application.Domain.Finances.Queries.GetBalance.Dto
     {
         public decimal Value { get; set; }
 
+        public decimal Availalble { get; set; }
+
         public List<BalanceHoldDto> Holds { get; set; }
     }
 }

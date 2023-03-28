@@ -1,7 +1,7 @@
 ﻿Create schema if not exists sc;
 GRANT ALL PRIVILEGES ON SCHEMA sc TO sc;
 
-drop table if exists sc.finances_history;
+drop table if exists sc.payments;
 drop table if exists sc.balance_holds;
 drop table if exists sc.finances;
 drop table if exists sc.contract_additional_costs;
@@ -258,6 +258,7 @@ create table sc.finances (
 	created timestamp without time zone not null,
 	user_id uuid not null,
 	balance numeric not null,
+	available_balance numeric not null,
 	CONSTRAINT PK_finances PRIMARY KEY (id),
     CONSTRAINT FK_finances_users FOREIGN KEY (user_id) REFERENCES sc.users (id) match simple
 );
@@ -275,22 +276,22 @@ create table sc.balance_holds (
 );
 GRANT ALL PRIVILEGES ON TABLE sc.balance_holds TO sc;
 
-create table sc.finances_history (
+create table sc.payments (
 	id uuid,
 	created timestamp without time zone not null,
-	finance_id uuid not null,
 	operation varchar not null,
-	balance_before numeric not null,
-	balance_after numeric not null,
 	operation_value numeric not null,
+	from_user_balance_before numeric,
+	from_user_balance_after numeric,	
 	from_user_id uuid,
+	to_user_balance_before numeric,
+	to_user_balance_after numeric,
 	to_user_id uuid,
 	related_contract_id uuid,
-	CONSTRAINT PK_finances_history PRIMARY KEY (id),
-	CONSTRAINT FK_finances_history_finances FOREIGN KEY (finance_id) REFERENCES sc.finances (id) match simple,
-    CONSTRAINT FK_finances_history_from_user FOREIGN KEY (from_user_id) REFERENCES sc.users (id) match simple,
-    CONSTRAINT FK_finances_history_to_user FOREIGN KEY (to_user_id) REFERENCES sc.users (id) match simple,
-    CONSTRAINT FK_finances_history_related_contract FOREIGN KEY (related_contract_id) REFERENCES sc.contracts (id) match simple
+	CONSTRAINT PK_payments PRIMARY KEY (id),
+    CONSTRAINT FK_payments_from_user FOREIGN KEY (from_user_id) REFERENCES sc.users (id) match simple,
+    CONSTRAINT FK_payments_to_user FOREIGN KEY (to_user_id) REFERENCES sc.users (id) match simple,
+    CONSTRAINT FK_payments_related_contract FOREIGN KEY (related_contract_id) REFERENCES sc.contracts (id) match simple
 );
-GRANT ALL PRIVILEGES ON TABLE sc.finances_history TO sc;
+GRANT ALL PRIVILEGES ON TABLE sc.payments TO sc;
 

@@ -39,6 +39,7 @@ namespace SuperCarga.Persistence.Database.EntityConfigurations
             builder.HasMany(i => i.Additions).WithOne().HasForeignKey(c => c.ContractId);
             builder.HasOne(i => i.Driver).WithMany().HasForeignKey(i => i.DriverId);
             builder.HasOne(i => i.Customer).WithMany().HasForeignKey(c => c.CustomerId);
+            builder.HasMany(i => i.Payments).WithOne().HasForeignKey(c => c.RelatedContractId);
         }
     }
 }

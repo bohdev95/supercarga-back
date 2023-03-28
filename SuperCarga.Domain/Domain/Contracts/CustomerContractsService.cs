@@ -14,9 +14,11 @@ using SuperCarga.Application.Domain.Costs.Abstraction;
 using SuperCarga.Application.Domain.Costs.Dto;
 using SuperCarga.Application.Domain.Drivers.Common.Abstraction;
 using SuperCarga.Application.Domain.Drivers.Customers.Dto;
+using SuperCarga.Application.Domain.Finances.Abstraction;
 using SuperCarga.Application.Domain.Finances.Model;
 using SuperCarga.Application.Domain.Location.Dto;
 using SuperCarga.Application.Domain.Proposals.Common.Models;
+using SuperCarga.Application.Domain.Users.Models;
 using SuperCarga.Application.Exceptions;
 using SuperCarga.Application.Validation;
 using SuperCarga.Persistence.Database;
@@ -32,14 +34,17 @@ namespace SuperCarga.Domain.Domain.Contracts
     {
         private readonly ICostsService costsService;
         private readonly IDriversService driversService;
+        private readonly IFinancesService financesService;
 
         public CustomerContractsService(
             SuperCargaContext ctx, 
             ICostsService costsService, 
-            IDriversService driversService) : base(ctx)
+            IDriversService driversService,
+            IFinancesService financesService) : base(ctx)
         {
             this.costsService = costsService;
             this.driversService = driversService;
+            this.financesService = financesService;
         }
 
         public async Task ConfirmDelivery(CustomerConfirmDeliveryCommand request)
@@ -59,68 +64,14 @@ namespace SuperCarga.Domain.Domain.Contracts
 
             await UpdateContractStatus(contract, ContractState.DeliveredConfirmed, false);
 
-            await UnholdAndTransfer(contract, false);
-
-            await ctx.SaveChangesAsync();
-        }
-
-        private async Task UnholdAndTransfer(Contract contract, bool save)
-        {
-            var customerFinance = await ctx.Finances
-                .Include(x => x.Holds)
-                .Where(x => x.UserId == contract.Customer.User.Id)
-                .FirstOrDefaultAsync();
-
-            var hold = customerFinance.Holds
-                .Where(x => x.RelatedContractId == contract.Id)
-                .FirstOrDefault();
-
-            ctx.BalanceHolds.Remove(hold);
-
-            var customerHistory = new FinanceHistory
-            {
-                Id = Guid.NewGuid(),
-                Created = DateTime.Now,
-                FinanceId = customerFinance.Id,
-                Operation = FinanceOperation.Transfer,
-                BalanceBefore = customerFinance.Balance,
-                BalanceAfter = customerFinance.Balance,
-                OperationValue = hold.Value,
-                RelatedContractId = contract.Id,
-                FromUserId = contract.Customer.User.Id,
-                ToUserId = contract.Driver.User.Id,
-            };
-            ctx.FinancesHistory.Add(customerHistory);
-
-            var driverFinance = await ctx.Finances
-                .Where(x => x.UserId == contract.Driver.User.Id)
-                .FirstOrDefaultAsync();
-
-            var newDriverBalance = driverFinance.Balance + hold.Value;
-
-            var driverHistory = new FinanceHistory
-            {
-                Id = Guid.NewGuid(),
-                Created = DateTime.Now,
-                FinanceId = driverFinance.Id,
-                Operation = FinanceOperation.Transfer,
-                BalanceBefore = driverFinance.Balance,
-                BalanceAfter = newDriverBalance,
-                OperationValue = hold.Value,
-                RelatedContractId = contract.Id,
-                FromUserId = contract.Customer.User.Id,
-                ToUserId = contract.Driver.User.Id,
-            };
-            ctx.FinancesHistory.Add(driverHistory);
-
-            driverFinance.Balance = newDriverBalance;
-
-            contract.PaymentState = ContractPaymentState.PrepaymentReceived;
-
-            if(save)
-            {
-                await ctx.SaveChangesAsync();
-            }
+            financesService.PaymentLock(() =>
+            { 
+                var holdValue = financesService.RemoveHold(contract.Customer.User.Id, contract.Id, false);
+                var driverFirstPayment = holdValue - contract.ServiceFee;
+                financesService.PayFee(contract.Customer.User.Id, contract.Id, false);
+                financesService.Pay(contract.Customer.User.Id, contract.Driver.User.Id, driverFirstPayment, FinanceOperation.Transfer, contract.Id, false);
+                ctx.SaveChangesAsync();
+            });
         }
 
         public async Task Finalize(CustomerFinalizeCommand request)
@@ -147,65 +98,11 @@ namespace SuperCarga.Domain.Domain.Contracts
 
             await driversService.UpdateDriverRates(contract.DriverId, false);
 
-            await Transfer(contract, request.Data.Payment, false);
-
-            await ctx.SaveChangesAsync();
-        }
-
-        private async Task Transfer(Contract contract, decimal paymentValue, bool save)
-        {
-            var customerFinance = await ctx.Finances
-                .Where(x => x.UserId == contract.Customer.User.Id)
-                .FirstOrDefaultAsync();
-
-            var newCustomerBalance = customerFinance.Balance - paymentValue;
-
-            var customerHistory = new FinanceHistory
+            financesService.PaymentLock(() =>
             {
-                Id = Guid.NewGuid(),
-                Created = DateTime.Now,
-                FinanceId = customerFinance.Id,
-                Operation = FinanceOperation.Transfer,
-                BalanceBefore = customerFinance.Balance,
-                BalanceAfter = newCustomerBalance,
-                OperationValue = paymentValue,
-                RelatedContractId = contract.Id,
-                FromUserId = contract.Customer.User.Id,
-                ToUserId = contract.Driver.User.Id,
-            };
-            ctx.FinancesHistory.Add(customerHistory);
-
-            customerFinance.Balance = newCustomerBalance;
-
-            var driverFinance = await ctx.Finances
-                .Where(x => x.UserId == contract.Driver.User.Id)
-                .FirstOrDefaultAsync();
-
-            var newDriverBalance = driverFinance.Balance + paymentValue;
-
-            var driverHistory = new FinanceHistory
-            {
-                Id = Guid.NewGuid(),
-                Created = DateTime.Now,
-                FinanceId = driverFinance.Id,
-                Operation = FinanceOperation.Transfer,
-                BalanceBefore = driverFinance.Balance,
-                BalanceAfter = newDriverBalance,
-                OperationValue = paymentValue,
-                RelatedContractId = contract.Id,
-                FromUserId = contract.Customer.User.Id,
-                ToUserId = contract.Driver.User.Id,
-            };
-            ctx.FinancesHistory.Add(driverHistory);
-
-            driverFinance.Balance = newDriverBalance;
-
-            contract.PaymentState = ContractPaymentState.PaidFull;
-
-            if (save)
-            {
-                await ctx.SaveChangesAsync();
-            }
+                financesService.Pay(contract.Customer.User.Id, contract.Driver.User.Id, request.Data.Payment, FinanceOperation.Transfer, contract.Id, false);
+                ctx.SaveChangesAsync();
+            });
         }
 
         public async Task<Guid> AddContract(AddContractCommand request)
@@ -275,15 +172,15 @@ namespace SuperCarga.Domain.Domain.Contracts
             proposal.State = ProposalState.Accepted;
 
             await UpdateDriversContracts(proposal.DriverId);
-
-            //TODO transfer fee to SC account
-            await AddBalanceHold(request.User.Id, request.Data.Payment, contract.Id, false);
-
             await ctx.Contracts.AddAsync(contract);
             await ctx.ContractAdditionalCosts.AddRangeAsync(additions);
             await ctx.ContractHistories.AddAsync(history);
-            
-            await ctx.SaveChangesAsync();
+
+            financesService.PaymentLock(() =>
+            {
+                financesService.AddHold(request.User.Id, request.Data.Payment, contract.Id, false);
+                ctx.SaveChangesAsync();
+            });
 
             return contract.Id;
         }
@@ -297,54 +194,11 @@ namespace SuperCarga.Domain.Domain.Contracts
             driver.Contracts++;
         }
 
-        private async Task AddBalanceHold(Guid userId, decimal holdValue, Guid contractId, bool save)
-        {
-            var customerFinances = await ctx.Finances
-                .Where(x => x.UserId == userId)
-                .FirstOrDefaultAsync();
-
-            if (customerFinances.Balance < holdValue)
-            {
-                throw new ValidationException("Payment value can not be bigger than user Balance.");
-            }
-
-            var newBalance = customerFinances.Balance - holdValue;
-
-            var financeHistory = new FinanceHistory
-            {
-                Id = Guid.NewGuid(),
-                Created = DateTime.Now,
-                FinanceId = customerFinances.Id,
-                Operation = FinanceOperation.Hold,
-                BalanceBefore = customerFinances.Balance,
-                BalanceAfter = newBalance,
-                OperationValue = holdValue,
-                RelatedContractId = contractId
-            };
-
-            var balanceHold = new BalanceHold
-            {
-                Id = Guid.NewGuid(),
-                Created = DateTime.Now,
-                FinanceId = customerFinances.Id,
-                Value = holdValue,
-                RelatedContractId = contractId
-            };
-
-            customerFinances.Balance = newBalance;
-
-            await ctx.FinancesHistory.AddAsync(financeHistory);
-            await ctx.BalanceHolds.AddAsync(balanceHold);
-
-            if (save)
-            {
-                await ctx.SaveChangesAsync();
-            }
-        }
-
         public async Task<CustomerContractDetailsDto> GetContractDetails(GetCustomerContractDetailsQuery request)
         {
             var dto = await ctx.Contracts
+                .Include(x => x.Payments)
+                .Include(x => x.Additions)
                 .Include(x => x.Job)
                 .ThenInclude(x => x.VehiculeType)
                 .Include(x => x.Driver)
@@ -374,7 +228,8 @@ namespace SuperCarga.Domain.Domain.Contracts
                     PickUpProofImagePath = x.PickUpProofImagePath,
                     DeliveryProofImagePath = x.DeliveryProofImagePath,
                     Driver = x.Driver.GetCustomerDriverDto(),
-                    CostsSummary = x.GetCostsSummary()
+                    CostsSummary = x.GetCostsSummary(),
+                    Payments = x.GetContractPayment()
                 })
                 .FirstOrDefaultAsync();
 

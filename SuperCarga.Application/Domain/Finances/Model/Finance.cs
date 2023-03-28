@@ -13,7 +13,7 @@ namespace SuperCarga.Application.Domain.Finances.Model
 
         public decimal Balance { get; set; }
 
-        public List<FinanceHistory> History { get; set; }
+        public decimal AvailableBalance { get; set; } //balance - holds
 
         public List<BalanceHold> Holds { get; set; }
     }
