@@ -14,7 +14,7 @@ namespace SuperCarga.Persistence.Registrations
         {
             services.AddDbContext<SuperCargaContext>(options => options.UseNpgsql(cs));
 
-            services.SeedDb();
+            //services.SeedDb();
 
             return services;
         }

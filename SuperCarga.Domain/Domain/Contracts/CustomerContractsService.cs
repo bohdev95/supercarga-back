@@ -70,7 +70,7 @@ namespace SuperCarga.Domain.Domain.Contracts
                 var driverFirstPayment = holdValue - contract.ServiceFee;
                 financesService.PayFee(contract.Customer.User.Id, contract.Id, false);
                 financesService.Pay(contract.Customer.User.Id, contract.Driver.User.Id, driverFirstPayment, FinanceOperation.Transfer, contract.Id, false);
-                ctx.SaveChangesAsync();
+                ctx.SaveChanges();
             });
         }
 
@@ -101,7 +101,7 @@ namespace SuperCarga.Domain.Domain.Contracts
             financesService.PaymentLock(() =>
             {
                 financesService.Pay(contract.Customer.User.Id, contract.Driver.User.Id, request.Data.Payment, FinanceOperation.Transfer, contract.Id, false);
-                ctx.SaveChangesAsync();
+                ctx.SaveChanges();
             });
         }
 
@@ -179,7 +179,7 @@ namespace SuperCarga.Domain.Domain.Contracts
             financesService.PaymentLock(() =>
             {
                 financesService.AddHold(request.User.Id, request.Data.Payment, contract.Id, false);
-                ctx.SaveChangesAsync();
+                ctx.SaveChanges();
             });
 
             return contract.Id;
