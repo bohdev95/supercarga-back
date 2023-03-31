@@ -15,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperCarga.Domain", "SuperC
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperCarga.Persistence", "SuperCarga.Persistence\SuperCarga.Persistence.csproj", "{BE0C9340-866F-42DB-9573-B94587515F95}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperCarga.Unit.Tests", "SuperCarga.Unit.Tests\SuperCarga.Unit.Tests.csproj", "{46BD7C83-DF48-412C-9626-916CF9AA84F5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperCarga.Unit.Tests", "SuperCarga.Unit.Tests\SuperCarga.Unit.Tests.csproj", "{46BD7C83-DF48-412C-9626-916CF9AA84F5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
