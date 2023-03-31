@@ -1,15 +1,12 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SuperCarga.Application.Domain.Common.Abstraction;
-using SuperCarga.Application.Domain.Common.Dto;
 using SuperCarga.Application.Domain.Finances.Model;
 using SuperCarga.Application.Domain.Users.Abstraction;
 using SuperCarga.Application.Domain.Users.Commands.AcceptTerms;
 using SuperCarga.Application.Domain.Users.Commands.ChangeImage;
 using SuperCarga.Application.Domain.Users.Commands.Register;
 using SuperCarga.Application.Domain.Users.Models;
-using SuperCarga.Application.Exceptions;
-using SuperCarga.Application.Validation;
 using SuperCarga.Persistence.Database;
 
 namespace SuperCarga.Domain.Domain.Users
@@ -99,7 +96,7 @@ namespace SuperCarga.Domain.Domain.Users
                 Id = Guid.NewGuid(),
                 Created = DateTime.Now,
                 UserId = user.Id,
-                Balance = 10000 //TODO
+                Balance = 0
             };
 
             setUserData(user);

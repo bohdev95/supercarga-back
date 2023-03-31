@@ -17,6 +17,9 @@ namespace SuperCarga.Persistence.Database.EntityConfigurations
 
             builder.Property(i => i.UserId).HasColumnName("user_id");
             builder.Property(i => i.Balance).HasColumnName("balance");
+            builder.Property(i => i.AvailableBalance).HasColumnName("available_balance");
+
+            builder.HasMany(i => i.Holds).WithOne().HasForeignKey(c => c.FinanceId);
         }
     }
 }

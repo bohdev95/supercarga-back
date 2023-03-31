@@ -19,6 +19,11 @@ namespace SuperCarga.Application.Exceptions
             }
         }
 
+        public ValidationException(string validationError)
+        {
+            ValdationErrors.Add(validationError);
+        }
+
         public ValidationException(List<string> validationErrors)
         {
             ValdationErrors = validationErrors;

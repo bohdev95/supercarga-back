@@ -276,12 +276,29 @@ namespace SuperCarga.Persistence.Database.Init
                 Id = Guid.NewGuid(),
                 Created = DateTime.Now,
                 UserId = customerUser.Id,
-                Balance = 10000
+                Balance = 10000000,
+                AvailableBalance = 10000000
+            };
+
+            var customerPayment = new Payment
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                Operation = FinanceOperation.Deposit,
+                OperationValue = 10000000,
+                FromUserBalanceBefore = null,
+                FromUserBalanceAfter = null,
+                FromUserId = null,
+                ToUserBalanceBefore = 0,
+                ToUserBalanceAfter = 10000000,
+                ToUserId = customerUser.Id,
+                RelatedContractId = null
             };
 
             ctx.Customers.Add(customer);
             ctx.Users.Add(customerUser);
             ctx.Finances.Add(customerFinance);
+            ctx.Payments.Add(customerPayment);
 
             #endregion
 
@@ -318,7 +335,8 @@ namespace SuperCarga.Persistence.Database.Init
                 Id = Guid.NewGuid(),
                 Created = DateTime.Now,
                 UserId = driverUser.Id,
-                Balance = 10000
+                Balance = 0,
+                AvailableBalance = 0
             };
 
             ctx.Drivers.Add(driver);
@@ -347,7 +365,17 @@ namespace SuperCarga.Persistence.Database.Init
             adminUser.EmailNormalized = adminUser.Email.ToUpper();
             adminUser.Password = new PasswordHasher<User>().HashPassword(driverUser, "admin");
 
+            var adminFinance = new Finance
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                UserId = adminUser.Id,
+                Balance = 0,
+                AvailableBalance = 0
+            };
+
             ctx.Users.Add(adminUser);
+            ctx.Finances.Add(adminFinance);
 
             #endregion
 
@@ -371,6 +399,10 @@ namespace SuperCarga.Persistence.Database.Init
                 .Where(x => x.User.Email == "test_customer@sc.com")
                 .Single();
 
+            var admin = ctx.Users
+                .Where(x => x.Email == "admin@sc.com")
+                .Single();
+
             var vehicules = ctx.VehiculeTypes.ToList();
 
             var r = new Random();
@@ -380,7 +412,7 @@ namespace SuperCarga.Persistence.Database.Init
 
             do
             {
-                var added = ctx.GenerateJob(customer, driver, vehicules, costsService, i, r);
+                var added = ctx.GenerateJob(customer, driver, admin, vehicules, costsService, i, r);
                 if (added)
                 {
                     i++;
@@ -395,13 +427,14 @@ namespace SuperCarga.Persistence.Database.Init
 
             ctx.SaveChanges();
 
-            driversService.UpdateDriverRates(driver.Id).GetAwaiter().GetResult();
+            driversService.UpdateDriverRates(driver.Id, true).GetAwaiter().GetResult();
         }
 
         private static bool GenerateJob(
             this SuperCargaContext ctx,
             Customer customer, 
             Driver driver, 
+            User admin,
             List<VehiculeType> vehicules, 
             ICostsService costsService,
             int index,
@@ -409,6 +442,255 @@ namespace SuperCarga.Persistence.Database.Init
         {
             var added = false;
 
+            var post = GenerateJob(customer, vehicules, costsService, index, r);
+
+            if (post.VehiculeTypeId == driver.VehiculeTypeId && post.State == JobState.Active && RandomBool(6, r))
+            {
+                added = true;
+
+                var proposal = GenerateProposal(post, driver, r);
+
+                ctx.Jobs.Add(post); 
+                ctx.Proposals.Add(proposal);
+
+                //proposal - hired
+                //contract - started
+                if (RandomBool(3, r))
+                {
+                    proposal.State = ProposalState.Hired;
+
+                    var contract = GenerateContract(post, customer, driver, costsService, proposal);
+                    ctx.Contracts.Add(contract);
+                    var history = ChangeContractState(contract, ContractState.Created);
+                    ctx.ContractHistories.Add(history);
+                    var history1 = ChangeContractState(contract, ContractState.Started);
+                    ctx.ContractHistories.Add(history1);
+
+                    var customerFin = ctx.Finances
+                        .Where(x => x.UserId == customer.User.Id)
+                        .FirstOrDefault();
+
+                    var hold = AddHold(customerFin, contract);
+                    ctx.Add(hold);
+
+                    //closed proposal and contract
+                    if (RandomBool(2, r))
+                    {
+                        var driverFin = ctx.Finances
+                        .Where(x => x.UserId == driver.User.Id)
+                        .FirstOrDefault();
+
+                        var adminFin = ctx.Finances
+                            .Where(x => x.UserId == admin.Id)
+                            .FirstOrDefault();
+
+                        proposal.State = ProposalState.Closed;
+                        contract.Rating = r.Next(1, 6);
+                        contract.RatingComment = "Rating comment";
+
+                        var history2 = ChangeContractState(contract, ContractState.Closed);
+                        ctx.ContractHistories.Add(history);        
+
+                        //remove hold
+                        RemoveHold(customerFin, hold);
+                        ctx.Remove(hold);
+
+                        var feePayment = AddFeePayment(contract, customerFin, adminFin, customer, admin);
+                        ctx.Payments.Add(feePayment);
+
+                        var driversFirstPayment = AddDriversPayment(contract.TotalPrice / 2 - contract.ServiceFee, customerFin, customer, contract, driverFin, driver);
+                        ctx.Payments.Add(driversFirstPayment);
+
+                        var driversSecondPayment = AddDriversPayment(contract.TotalPrice / 2, customerFin, customer, contract, driverFin, driver);
+                        ctx.Payments.Add(driversSecondPayment);
+
+                        ctx.SaveChanges();
+                    }
+                }
+                //proposal accepted
+                //contract created
+                else if (proposal.State == ProposalState.Accepted)
+                {
+                    var contract = GenerateContract(post, customer, driver, costsService, proposal);
+                    ctx.Contracts.Add(contract);
+                    var history = ChangeContractState(contract, ContractState.Created);
+                    ctx.ContractHistories.Add(history);
+                }
+            }
+            //job added, no proposal and contract
+            else if(!RandomBool(6, r))
+            {
+                ctx.Jobs.Add(post);
+                added = true;
+            }
+
+            return added;  
+        }
+
+        private static Payment AddFeePayment(Contract contract, Finance customerFin, Finance adminFin, Customer customer, User admin)
+        {
+            var paymentFee = new Payment
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                Operation = FinanceOperation.Fee,
+                OperationValue = contract.ServiceFee,
+                FromUserBalanceBefore = customerFin.Balance,
+                FromUserBalanceAfter = customerFin.Balance - contract.ServiceFee,
+                FromUserId = customer.User.Id,
+                ToUserBalanceBefore = adminFin.Balance,
+                ToUserBalanceAfter = adminFin.Balance + contract.ServiceFee,
+                ToUserId = admin.Id,
+                RelatedContractId = contract.Id
+            };
+            
+            customerFin.Balance = customerFin.Balance - contract.ServiceFee;
+            customerFin.AvailableBalance = customerFin.AvailableBalance - contract.ServiceFee;
+            adminFin.Balance = adminFin.Balance + contract.ServiceFee;
+            adminFin.AvailableBalance = adminFin.AvailableBalance + contract.ServiceFee;
+
+            return paymentFee;
+        }
+
+        private static Payment AddDriversPayment(decimal driversPayment, Finance customerFin, Customer customer, Contract contract, Finance driverFin, Driver driver)
+        {
+            var paymentForDriver = new Payment
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                Operation = FinanceOperation.Transfer,
+                OperationValue = driversPayment,
+                FromUserBalanceBefore = customerFin.Balance,
+                FromUserBalanceAfter = customerFin.Balance - driversPayment,
+                FromUserId = customer.User.Id,
+                ToUserBalanceBefore = driverFin.Balance,
+                ToUserBalanceAfter = driverFin.Balance + driversPayment,
+                ToUserId = driver.User.Id,
+                RelatedContractId = contract.Id
+            };
+            customerFin.Balance = customerFin.Balance - driversPayment;
+            customerFin.AvailableBalance = customerFin.AvailableBalance - driversPayment;
+            driverFin.Balance = driverFin.Balance + driversPayment;
+            driverFin.AvailableBalance = driverFin.AvailableBalance + driversPayment;
+
+            return paymentForDriver;
+        }
+
+        private static BalanceHold AddHold(Finance customerFin, Contract contract)
+        {
+            var hold = new BalanceHold
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                FinanceId = customerFin.Id,
+                Value = contract.TotalPrice / 2,
+                RelatedContractId = contract.Id
+            };
+
+            customerFin.AvailableBalance = customerFin.AvailableBalance - (contract.TotalPrice / 2);
+
+            return hold;
+        }
+
+        private static void RemoveHold(Finance customerFin, BalanceHold hold)
+        {
+            customerFin.AvailableBalance = customerFin.AvailableBalance + hold.Value;
+        }
+
+
+        private static ContractHistory ChangeContractState(Contract contract, string state)
+        {
+            contract.State = state;
+
+            return new ContractHistory
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                ContractId = contract.Id,
+                State = contract.State
+            };
+        }
+
+        private static Contract GenerateContract(Job post, Customer customer, Driver driver, ICostsService costsService, Proposal proposal)
+        {
+            var costs = costsService.CalculateCostsSummary(new CaluclateCostsSummaryDto
+            {
+                PricePerKm = proposal.PricePerKm,
+                Distance = post.Distance,
+                RequireLoadingCrew = post.RequireLoadingCrew,
+                RequireUnloadingCrew = post.RequireUnloadingCrew
+            }).GetAwaiter().GetResult();
+
+            var contract = new Contract
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                ProposalId = proposal.Id,
+                JobId = post.Id,
+                DriverId = driver.Id,
+                CustomerId = customer.Id,
+                State = ContractState.Created,
+                PricePerKm = costs.PricePerKm,
+                PricePerDistance = costs.PricePerDistance,
+                TotalPrice = costs.TotalPrice,
+                ServiceFee = costs.ServiceFee,
+                Price = costs.Price,
+                PaymentState = ContractPaymentState.OnDeliveryConfirmation
+            };
+
+            contract.Additions = costs.Additions.Select(x => new ContractAdditionalCost
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                ContractId = contract.Id,
+                Name = x.Name,
+                Price = x.Price
+            }).ToList();
+
+            contract.History = new List<ContractHistory>();
+
+            //contract.History = new List<ContractHistory>
+            //{ 
+            //    new ContractHistory
+            //    {
+            //        Id = Guid.NewGuid(),
+            //        Created = DateTime.Now,
+            //        ContractId = contract.Id,
+            //        State = contract.State
+            //    }
+            //};
+
+            return contract;
+        }
+
+        private static Proposal GenerateProposal(Job post, Driver driver, Random r)
+        {
+            var proposal = new Proposal
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.Now,
+                JobId = post.Id,
+                DriverId = driver.Id,
+                PricePerKm = post.PricePerKm + (r.Next(10, 130) * 0.1M),
+                State = RandomBool(2, r) ? ProposalState.Pending : ProposalState.Accepted
+            };
+
+            if (proposal.State == ProposalState.Accepted)
+                proposal.Checked = true;
+
+            if (proposal.State == ProposalState.Pending)
+                proposal.Checked = RandomBool(2, r);
+
+            return proposal;
+        }
+
+        private static Job GenerateJob(
+            Customer customer,
+            List<VehiculeType> vehicules,
+            ICostsService costsService,
+            int index,
+            Random r)
+        {
             var post = new Job();
             post.Id = Guid.NewGuid();
             post.Created = DateTime.Now;
@@ -423,10 +705,10 @@ namespace SuperCarga.Persistence.Database.Init
             post.DestinationPostCode = $"{index}{index}{index}-{index}{index}";
             post.DestinationStreet = $"Street {index}{index}";
             post.DestinationCity = $"City {index}{index}";
-            post.RequireLoadingCrew = RandomBool(2);
-            post.RequireUnloadingCrew = RandomBool(2);
+            post.RequireLoadingCrew = RandomBool(2, r);
+            post.RequireUnloadingCrew = RandomBool(2, r);
             post.Description = $"Job description {index}";
-            post.State = RandomBool(4) ? JobState.Active : JobState.Closed;
+            post.State = RandomBool(4, r) ? JobState.Active : JobState.Closed;
             post.Tittle = $"Job {index}";
             post.PickupDate = DateTime.Now.AddDays(r.Next(2, 10));
             post.DeliveryDate = post.PickupDate.AddDays(r.Next(10, 100));
@@ -456,7 +738,7 @@ namespace SuperCarga.Persistence.Database.Init
             post.ServiceFee = jobcosts.ServiceFee;
             post.Price = jobcosts.Price;
 
-            var jobadditions = jobcosts.Additions.Select(x => new JobAdditionalCost
+            post.Additions = jobcosts.Additions.Select(x => new JobAdditionalCost
             {
                 Id = Guid.NewGuid(),
                 Created = DateTime.Now,
@@ -465,161 +747,10 @@ namespace SuperCarga.Persistence.Database.Init
                 Price = x.Price
             }).ToList();
 
-            if (post.VehiculeTypeId == driver.VehiculeTypeId && post.State == JobState.Active && RandomBool(6))
-            {
-                ctx.Jobs.Add(post);
-                ctx.JobAdditionalCosts.AddRange(jobadditions);
-                added = true;
-
-                var proposal = new Proposal
-                {
-                    Id = Guid.NewGuid(),
-                    Created = DateTime.Now,
-                    JobId = post.Id,
-                    DriverId = driver.Id,
-                    PricePerKm = post.PricePerKm + (r.Next(10, 130) * 0.1M),
-                    State = RandomBool(2) ? ProposalState.Pending : ProposalState.Accepted
-                };
-
-                if (proposal.State == ProposalState.Accepted)
-                    proposal.Checked = true;
-
-                if (proposal.State == ProposalState.Pending)
-                    proposal.Checked = RandomBool(2);
-
-                ctx.Proposals.Add(proposal);
-
-                if (RandomBool(3))
-                {
-                    ctx.SaveChanges();
-
-                    proposal.State = ProposalState.Hired;
-
-                    var costs = costsService.CalculateCostsSummary(new CaluclateCostsSummaryDto
-                    {
-                        PricePerKm = proposal.PricePerKm,
-                        Distance = post.Distance,
-                        RequireLoadingCrew = post.RequireLoadingCrew,
-                        RequireUnloadingCrew = post.RequireUnloadingCrew
-                    }).GetAwaiter().GetResult();
-
-                    var contract = new Contract
-                    {
-                        Id = Guid.NewGuid(),
-                        Created = DateTime.Now,
-                        ProposalId = proposal.Id,
-                        JobId = post.Id,
-                        DriverId = driver.Id,
-                        CustomerId = customer.Id,
-                        State = ContractState.Started,
-                        PricePerKm = costs.PricePerKm,
-                        PricePerDistance = costs.PricePerDistance,
-                        TotalPrice = costs.TotalPrice,
-                        ServiceFee = costs.ServiceFee,
-                        Price = costs.Price
-                    };
-                    ctx.Contracts.Add(contract);
-
-                    var additions = costs.Additions.Select(x => new ContractAdditionalCost
-                    {
-                        Id = Guid.NewGuid(),
-                        Created = DateTime.Now,
-                        ContractId = contract.Id,
-                        Name = x.Name,
-                        Price = x.Price
-                    }).ToList();
-                    ctx.ContractAdditionalCosts.AddRange(additions);
-
-                    var contractHistory = new ContractHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        Created = DateTime.Now,
-                        ContractId = contract.Id,
-                        State = ContractState.Started
-                    };
-                    ctx.ContractHistories.Add(contractHistory);
-
-                    if (RandomBool(2))
-                    {
-                        proposal.State = ProposalState.Closed;
-                        contract.State = ContractState.Closed;
-                        contract.Rating = r.Next(1, 6);
-                        contract.RatingComment = "Rating comment";
-
-                        var contractHistory1 = new ContractHistory
-                        {
-                            Id = Guid.NewGuid(),
-                            Created = DateTime.Now.AddHours(1),
-                            ContractId = contract.Id,
-                            State = ContractState.Closed
-                        };
-                        ctx.ContractHistories.Add(contractHistory1);
-                    }
-                }
-                else if (proposal.State == ProposalState.Accepted)
-                {
-                    ctx.SaveChanges();
-
-                    var costs = costsService.CalculateCostsSummary(new CaluclateCostsSummaryDto
-                    {
-                        PricePerKm = proposal.PricePerKm,
-                        Distance = post.Distance,
-                        RequireLoadingCrew = post.RequireLoadingCrew,
-                        RequireUnloadingCrew = post.RequireUnloadingCrew
-                    }).GetAwaiter().GetResult();
-
-                    var contract = new Contract
-                    {
-                        Id = Guid.NewGuid(),
-                        Created = DateTime.Now,
-                        ProposalId = proposal.Id,
-                        JobId = proposal.JobId,
-                        DriverId = proposal.DriverId,
-                        CustomerId = proposal.Job.CustomerId,
-                        State = ContractState.Created,
-                        PricePerKm = costs.PricePerKm,
-                        PricePerDistance = costs.PricePerDistance,
-                        TotalPrice = costs.TotalPrice,
-                        ServiceFee = costs.ServiceFee,
-                        Price = costs.Price
-                    };
-
-                    var additions = costs.Additions.Select(x => new ContractAdditionalCost
-                    {
-                        Id = Guid.NewGuid(),
-                        Created = DateTime.Now,
-                        ContractId = contract.Id,
-                        Name = x.Name,
-                        Price = x.Price
-                    })
-                    .ToList();
-
-                    var history = new ContractHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        Created = DateTime.Now,
-                        ContractId = contract.Id,
-                        State = contract.State
-                    };
-
-                    proposal.State = ProposalState.Accepted;
-
-                    ctx.Contracts.Add(contract);
-                    ctx.ContractAdditionalCosts.AddRange(additions);
-                    ctx.ContractHistories.Add(history); 
-                }
-            }
-            else if(!RandomBool(6))
-            {
-                ctx.Jobs.Add(post);
-                ctx.JobAdditionalCosts.AddRange(jobadditions);
-                added = true;
-            }
-
-            return added;
-
-            bool RandomBool(int max) => r.Next(0, max) == 0 ? false : true;
+            return post;
         }
+
+        private static bool RandomBool(int max, Random r) => r.Next(0, max) == 0 ? false : true;
 
     }
 }

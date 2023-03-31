@@ -12,6 +12,9 @@ namespace SuperCarga.Api.Settings
             var imageStoreConfig = configurationManager.GetSection("ImageStoresConfig").Get<ImageStoresConfig>();
             services.AddSingleton(imageStoreConfig);
 
+            var locationConfig = configurationManager.GetSection("LocationConfig").Get<LocationConfig>();
+            services.AddSingleton(locationConfig);
+
             return services;
         }
     }

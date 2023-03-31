@@ -125,6 +125,7 @@ namespace SuperCarga.Domain.Domain.Jobs
                 .FirstOrDefaultAsync();
 
             var query = ctx.Jobs
+                .Include(x => x.Contracts)
                 .Include(x => x.VehiculeType)
                 .Include(x => x.Proposals)
                 .Include(x => x.Customer)
@@ -134,8 +135,10 @@ namespace SuperCarga.Domain.Domain.Jobs
                 {
                     job = x,
                     proposalAlreadyAdded = x.Proposals.Where(x => x.DriverId == driverId).Any(),
-                    addedToFavorite = x.AddedToFavoriteBy.Where(x => x.Id == driverId).Any()
+                    addedToFavorite = x.AddedToFavoriteBy.Where(x => x.Id == driverId).Any(),
+                    alreadyHired = x.Contracts.Where(x => x.DriverId == driverId).Any()
                 })
+                .Where(x => !x.alreadyHired)
                 .Select(x => new DriverJobListItemDto
                 {
                     Id = x.job.Id,

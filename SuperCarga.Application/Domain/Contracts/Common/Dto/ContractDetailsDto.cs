@@ -1,4 +1,5 @@
 ﻿using SuperCarga.Application.Domain.Common.Dto;
+using SuperCarga.Application.Domain.Costs.Dto;
 using SuperCarga.Application.Domain.Location.Dto;
 using System;
 using System.Collections.Generic;
@@ -24,8 +25,6 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Dto
 
         public int Distance { get; set; }
 
-        public decimal PricePerKm { get; set; }
-
         public DateTime PickupDate { get; set; }
 
         public DateTime DeliveryDate { get; set; }
@@ -36,15 +35,13 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Dto
 
         public AddressDto Destination { get; set; }
 
-        public string PaymentState { get; set; } //TODO
+        public string PaymentState { get; set; } 
 
         public string State { get; set; }
 
         public DateTime StateChanged { get; set; }
 
         public bool IsInDispute { get; set; }
-
-        public decimal Price { get; set; }
 
         public string PickUpCargoImagePath { get; set; }
 
@@ -53,5 +50,9 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Dto
         public string DeliveryCargoImagePath { get; set; }
 
         public string DeliveryProofImagePath { get; set; }
+
+        public CostsSummaryDto CostsSummary { get; set; }
+
+        public List<ContractPaymentDto> Payments { get; set; }
     }
 }

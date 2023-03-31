@@ -23,39 +23,34 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using SuperCarga.Application.Domain.Costs.Abstraction;
+using SuperCarga.Application.Domain.Costs.Dto;
 
 namespace SuperCarga.Domain.Domain.Contracts
 {
     public class DriverContractsService : ContractsService, IDriverContractsService
     {
         private readonly IImagesService imagesService;
-        private readonly ICostsService costsService;
 
-        public DriverContractsService(SuperCargaContext ctx, IImagesService imagesService, ICostsService costsService) : base(ctx)
+        public DriverContractsService(SuperCargaContext ctx, IImagesService imagesService) : base(ctx)
         {
             this.imagesService = imagesService;
-            this.costsService = costsService;
         }
 
         public async Task StartContract(StartContractCommand request)
         {
-            var proposal = await ctx.Proposals
-                .Include(x => x.Job)
-                .Where(x => x.Id == request.Data.ProposalId)
-                .FirstOrDefaultAsync();
-
-            if (proposal.DriverId != request.User.DriverId)
-            {
-                throw new ForbiddenException();
-            }
-
             var contract = await ctx.Contracts
+                .Include(x => x.Proposal)
                 .Where(x => x.ProposalId == request.Data.ProposalId)
                 .FirstOrDefaultAsync();
 
-            if(contract == null)
+            if (contract == null)
             {
                 throw new NotFoundException(ValidationMessage.NotExist("Contract"));
+            }
+
+            if (contract.DriverId != request.User.DriverId || contract.Proposal.DriverId != request.User.DriverId)
+            {
+                throw new ForbiddenException();
             }
 
             if (contract.State != ContractState.Created)
@@ -63,56 +58,58 @@ namespace SuperCarga.Domain.Domain.Contracts
                 throw new BadRequestException(ValidationMessage.InvalidState("Contract"));
             }
 
-            await UpdateContractStatus(async contract =>
-            {
-                contract.State = ContractState.Started;
-                proposal.State = ProposalState.Hired;
-            },
-            contract.Id,
-            request.User.DriverId.Value);
+            await UpdateContractStatus(contract, ContractState.Started, false);
+
+            contract.Proposal.State = ProposalState.Hired;
+
+            await ctx.SaveChangesAsync();
         }
 
         public async Task Delivered(DriverDeliveredCommand request)
         {
-            await UpdateContractStatus(async contract =>
-            {
-                contract.State = ContractState.Delivered;
-                contract.DeliveryCargoImagePath = await imagesService.SaveDeliveryCargoImage(request.Data.CargoImage, request.Data.ContractId);
-                contract.DeliveryProofImagePath = await imagesService.SaveDeliveryProofImage(request.Data.ProofImage, request.Data.ContractId);
-            },
-            request.Data.ContractId,
-            request.User.DriverId.Value);
-        }
-
-        public async Task PickedUp(DriverPickedUpCommand request)
-        {
-            await UpdateContractStatus(async contract =>
-            {
-                contract.State = ContractState.InProgress;
-                contract.PickUpCargoImagePath = await imagesService.SavePickUpCargoImage(request.Data.CargoImage, request.Data.ContractId);
-                contract.PickUpProofImagePath = await imagesService.SavePickUpProofImage(request.Data.ProofImage, request.Data.ContractId);
-            },
-            request.Data.ContractId,
-            request.User.DriverId.Value);
-        }
-
-        private async Task UpdateContractStatus(Func<Contract, Task> update, Guid contractId, Guid driverId)
-        {
             var contract = await ctx.Contracts
-                .Where(x => x.Id == contractId)
+                .Include(x => x.Proposal)
+                .Where(x => x.Id == request.Data.ContractId)
                 .FirstOrDefaultAsync();
 
-            if (contract.DriverId != driverId)
+            if (contract.DriverId != request.User.DriverId)
             {
                 throw new ForbiddenException();
             }
 
-            await UpdateContractStatus(update, contract);
+            await UpdateContractStatus(contract, ContractState.Delivered, false);
+
+            contract.DeliveryCargoImagePath = await imagesService.SaveDeliveryCargoImage(request.Data.CargoImage, request.Data.ContractId);
+            contract.DeliveryProofImagePath = await imagesService.SaveDeliveryProofImage(request.Data.ProofImage, request.Data.ContractId);
+
+            await ctx.SaveChangesAsync();
+        }
+
+        public async Task PickedUp(DriverPickedUpCommand request)
+        {
+            var contract = await ctx.Contracts
+                .Include(x => x.Proposal)
+                .Where(x => x.Id == request.Data.ContractId)
+                .FirstOrDefaultAsync();
+
+            if (contract.DriverId != request.User.DriverId)
+            {
+                throw new ForbiddenException();
+            }
+
+            await UpdateContractStatus(contract, ContractState.InProgress, false);
+
+            contract.PickUpCargoImagePath = await imagesService.SavePickUpCargoImage(request.Data.CargoImage, request.Data.ContractId);
+            contract.PickUpProofImagePath = await imagesService.SavePickUpProofImage(request.Data.ProofImage, request.Data.ContractId);
+
+            await ctx.SaveChangesAsync();
         }
 
         public async Task<DriverContractDetailsDto> GetContractDetails(GetDriverContractDetailsQuery request)
         {
             var dto = await ctx.Contracts
+                .Include(x => x.Payments)
+                .Include(x => x.Additions)
                 .Include(x => x.Job)
                 .ThenInclude(x => x.VehiculeType)
                 .Include(x => x.Customer)
@@ -128,22 +125,22 @@ namespace SuperCarga.Domain.Domain.Contracts
                     Description = x.Job.Description,
                     Tittle = x.Job.Tittle,
                     Distance = x.Job.Distance,
-                    PricePerKm = x.PricePerKm,
                     PickupDate = x.Job.PickupDate,
                     DeliveryDate = x.Job.DeliveryDate,
                     Cargo = x.Job.GetDimensionsCargo(),
                     Origin = x.Job.GetOrigin(),
                     Destination = x.Job.GetDestination(),
-                    Customer = x.Customer.GetDriverCustomerDto(),
-                    PaymentState = "On delivery confirmation", //TODO
+                    PaymentState = x.PaymentState,
                     State = x.State,
                     StateChanged = x.History.OrderByDescending(x => x.Created).Select(x => x.Created).FirstOrDefault(),
                     IsInDispute = false, //TODO
-                    Price = x.Price,
                     PickUpCargoImagePath = x.PickUpCargoImagePath,
                     DeliveryCargoImagePath = x.DeliveryCargoImagePath,
                     PickUpProofImagePath = x.PickUpProofImagePath,
-                    DeliveryProofImagePath = x.DeliveryProofImagePath
+                    DeliveryProofImagePath = x.DeliveryProofImagePath,
+                    Customer = x.Customer.GetDriverCustomerDto(),
+                    CostsSummary = x.GetCostsSummary(),
+                    Payments = x.GetContractPayment()
                 })
                 .FirstOrDefaultAsync();
 

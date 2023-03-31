@@ -1,13 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SuperCarga.Application.Domain.Common.Dto;
-using SuperCarga.Application.Domain.Contracts.Common.Models;
 using SuperCarga.Application.Domain.Costs.Abstraction;
 using SuperCarga.Application.Domain.Costs.Dto;
 using SuperCarga.Application.Domain.Drivers.Customers.Dto;
 using SuperCarga.Application.Domain.Location.Dto;
 using SuperCarga.Application.Domain.Proposals.Customers.Abstraction;
 using SuperCarga.Application.Domain.Proposals.Customers.Commands.AddToFavorites;
-using SuperCarga.Application.Domain.Proposals.Customers.Commands.Hire;
 using SuperCarga.Application.Domain.Proposals.Customers.Commands.RemoveFromFavorites;
 using SuperCarga.Application.Domain.Proposals.Customers.Queries.Details;
 using SuperCarga.Application.Domain.Proposals.Customers.Queries.Details.Dto;
@@ -15,7 +13,6 @@ using SuperCarga.Application.Domain.Proposals.Customers.Queries.List.All;
 using SuperCarga.Application.Domain.Proposals.Customers.Queries.List.Common.Dto;
 using SuperCarga.Application.Domain.Proposals.Customers.Queries.List.Favorites;
 using SuperCarga.Application.Exceptions;
-using SuperCarga.Application.Validation;
 using SuperCarga.Domain.Domain.Common;
 using SuperCarga.Persistence.Database;
 
@@ -85,49 +82,6 @@ namespace SuperCarga.Domain.Domain.Proposals
             .AsQueryable();
 
             return resQuery;
-        }
-
-        public async Task<Guid> Hire(HireCommand request)
-        {
-            var proposal = await ctx.Proposals
-                .Include(x => x.Job)
-                .Where(x => x.Id == request.Data.ProposalId)
-                .FirstOrDefaultAsync();
-
-            if (proposal.Job.CustomerId != request.User.CustomerId)
-                throw new ForbiddenException();
-
-            var contractAlreadyExists = await ctx.Contracts
-                .Where(x => x.ProposalId == request.Data.ProposalId)
-                .AnyAsync();
-
-            if (contractAlreadyExists)
-                throw new AlreadyExistsException(ValidationMessage.AlreadyExist("Contract"));
-
-            var contract = new Contract
-            {
-                Id = Guid.NewGuid(),
-                Created = DateTime.Now,
-                ProposalId = proposal.Id,
-                JobId = proposal.JobId,
-                DriverId = proposal.DriverId,
-                CustomerId = proposal.Job.CustomerId,
-                State = ContractState.Started
-            };
-
-            var contractHistory = new ContractHistory
-            {
-                Id = Guid.NewGuid(),
-                Created = DateTime.Now,
-                ContractId = contract.Id,
-                State = contract.State
-            };
-
-            await ctx.Contracts.AddAsync(contract);
-            await ctx.ContractHistories.AddAsync(contractHistory);
-            await ctx.SaveChangesAsync();
-
-            return contract.Id;
         }
 
         public async Task AddProposalToFavorites(AddProposalToFavoritesCommand request)

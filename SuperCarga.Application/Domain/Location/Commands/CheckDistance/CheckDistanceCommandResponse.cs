@@ -2,6 +2,6 @@
 {
     public class CheckDistanceCommandResponse
     {
-        public int Distance { get; set; }
+        public int? Distance { get; set; }
     }
 }

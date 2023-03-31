@@ -118,7 +118,5 @@ namespace SuperCarga.Api.Controllers.Proposals
         {
             return await ExecuteUserRequest<RemoveProposalFromFavoritesCommand, RemoveProposalFromFavoritesRequest>(nameof(RemoveFromFavorites), request);
         }
-
-
     }
 }

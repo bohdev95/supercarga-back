@@ -6,12 +6,7 @@ using SuperCarga.Application.Domain.Contracts.Common.Models;
 using SuperCarga.Application.Domain.Location.Dto;
 using SuperCarga.Domain.Domain.Common;
 using SuperCarga.Persistence.Database;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SuperCarga.Domain.Domain.Contracts
 {
@@ -28,9 +23,9 @@ namespace SuperCarga.Domain.Domain.Contracts
 
         public string GetState(Guid id) => ctx.Contracts.Where(x => x.Id == id).Select(x => x.State).FirstOrDefault();
 
-        protected async Task UpdateContractStatus(Func<Contract, Task> update, Contract contract)
+        protected async Task UpdateContractStatus(Contract contract, string state, bool save)
         {
-            await update(contract);
+            contract.State = state;
 
             var contractHistory = new ContractHistory
             {
@@ -41,7 +36,11 @@ namespace SuperCarga.Domain.Domain.Contracts
             };
 
             await ctx.ContractHistories.AddAsync(contractHistory);
-            await ctx.SaveChangesAsync();
+
+            if(save)
+            {
+                await ctx.SaveChangesAsync();
+            }
         }
 
         protected async Task<ListResponseDto<ActiveContractListITemDto>> ListActiveContracts(ListRequestDto listRequest, Expression<Func<Contract, bool>> predicate)
@@ -58,7 +57,7 @@ namespace SuperCarga.Domain.Domain.Contracts
                     Tittle = x.Job.Tittle,
                     Origin = x.Job.GetOrigin(),
                     Destination = x.Job.GetDestination(),
-                    PaymentState = "On delivery confirmation", //TODO
+                    PaymentState = x.PaymentState,
                     State = x.State,
                     StateChanged = x.History.OrderByDescending(x => x.Created).Select(x => x.Created).FirstOrDefault(),
                     IsInDispute = false //TODO

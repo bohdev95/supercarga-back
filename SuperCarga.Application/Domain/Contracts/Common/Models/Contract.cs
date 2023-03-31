@@ -1,6 +1,7 @@
 ﻿using SuperCarga.Application.Domain.Common.Model;
 using SuperCarga.Application.Domain.Customers.Common.Models;
 using SuperCarga.Application.Domain.Drivers.Common.Models;
+using SuperCarga.Application.Domain.Finances.Model;
 using SuperCarga.Application.Domain.Jobs.Common.Models;
 using SuperCarga.Application.Domain.Proposals.Common.Models;
 
@@ -25,6 +26,8 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Models
         public Customer Customer { get; set; }
 
         public string State { get; set; }
+        
+        public string PaymentState { get; set; } 
 
         #region costs
 
@@ -59,5 +62,7 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Models
         public string? RatingComment { get; set; }
 
         #endregion
+
+        public List<Payment> Payments { get; set; } 
     }
 }

@@ -1,6 +1,9 @@
 ﻿Create schema if not exists sc;
 GRANT ALL PRIVILEGES ON SCHEMA sc TO sc;
 
+drop table if exists sc.payments;
+drop table if exists sc.balance_holds;
+drop table if exists sc.finances;
 drop table if exists sc.contract_additional_costs;
 drop table if exists sc.contract_histories;
 drop table if exists sc.contracts;
@@ -10,7 +13,6 @@ drop table if exists sc.driver_favorite_jobs;
 drop table if exists sc.job_additional_costs;
 drop table if exists sc.jobs;
 drop table if exists sc.free_estimation_history;
-drop table if exists sc.finances;
 drop table if exists sc.users_roles;
 drop table if exists sc.users;
 drop table if exists sc.roles;
@@ -103,16 +105,6 @@ create table sc.users_roles (
     CONSTRAINT FK_users_roles_roles FOREIGN KEY (role_id) REFERENCES sc.roles (id) match simple
 );
 GRANT ALL PRIVILEGES ON TABLE sc.users_roles TO sc;
-
-create table sc.finances (
-	id uuid,
-	created timestamp without time zone not null,
-	user_id uuid not null,
-	balance numeric not null,
-	CONSTRAINT PK_finances PRIMARY KEY (id),
-    CONSTRAINT FK_finances_users FOREIGN KEY (user_id) REFERENCES sc.users (id) match simple
-);
-GRANT ALL PRIVILEGES ON TABLE sc.finances TO sc;
 
 create table sc.free_estimation_history (
 	id uuid,
@@ -220,6 +212,7 @@ create table sc.contracts (
 	driver_id uuid not null,
 	customer_id uuid not null,
 	state varchar not null,
+	payment_state varchar not null,
 	price_per_km numeric not null,
 	price_per_distance numeric not null,
 	price numeric not null,
@@ -259,4 +252,46 @@ create table sc.contract_additional_costs (
 	constraint FK_contract_additional_costs_contracts foreign key (contract_id) references sc.contracts (id) match simple
 );
 GRANT ALL PRIVILEGES ON TABLE sc.contract_additional_costs TO sc;
+
+create table sc.finances (
+	id uuid,
+	created timestamp without time zone not null,
+	user_id uuid not null,
+	balance numeric not null,
+	available_balance numeric not null,
+	CONSTRAINT PK_finances PRIMARY KEY (id),
+    CONSTRAINT FK_finances_users FOREIGN KEY (user_id) REFERENCES sc.users (id) match simple
+);
+GRANT ALL PRIVILEGES ON TABLE sc.finances TO sc;
+
+create table sc.balance_holds (
+	id uuid,
+	created timestamp without time zone not null,
+	finance_id uuid not null,
+	value numeric not null,
+	related_contract_id uuid not null,
+	CONSTRAINT PK_balance_holds PRIMARY KEY (id),
+    CONSTRAINT FK_balance_holds_finances FOREIGN KEY (finance_id) REFERENCES sc.finances (id) match simple,
+    CONSTRAINT FK_balance_holds_related_contract FOREIGN KEY (related_contract_id) REFERENCES sc.contracts (id) match simple
+);
+GRANT ALL PRIVILEGES ON TABLE sc.balance_holds TO sc;
+
+create table sc.payments (
+	id uuid,
+	created timestamp without time zone not null,
+	operation varchar not null,
+	operation_value numeric not null,
+	from_user_balance_before numeric,
+	from_user_balance_after numeric,	
+	from_user_id uuid,
+	to_user_balance_before numeric,
+	to_user_balance_after numeric,
+	to_user_id uuid,
+	related_contract_id uuid,
+	CONSTRAINT PK_payments PRIMARY KEY (id),
+    CONSTRAINT FK_payments_from_user FOREIGN KEY (from_user_id) REFERENCES sc.users (id) match simple,
+    CONSTRAINT FK_payments_to_user FOREIGN KEY (to_user_id) REFERENCES sc.users (id) match simple,
+    CONSTRAINT FK_payments_related_contract FOREIGN KEY (related_contract_id) REFERENCES sc.contracts (id) match simple
+);
+GRANT ALL PRIVILEGES ON TABLE sc.payments TO sc;
 

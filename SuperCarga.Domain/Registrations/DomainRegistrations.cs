@@ -8,6 +8,7 @@ using SuperCarga.Application.Domain.Customers.Common.Abstraction;
 using SuperCarga.Application.Domain.Customers.Customers.Abstraction;
 using SuperCarga.Application.Domain.Drivers.Common.Abstraction;
 using SuperCarga.Application.Domain.Drivers.Drivers.Abstraction;
+using SuperCarga.Application.Domain.Finances.Abstraction;
 using SuperCarga.Application.Domain.FreeEstimation.Abstraction;
 using SuperCarga.Application.Domain.Jobs.Common.Abstraction;
 using SuperCarga.Application.Domain.Jobs.Customers.Abstraction;
@@ -23,6 +24,7 @@ using SuperCarga.Domain.Domain.Contracts;
 using SuperCarga.Domain.Domain.Costs;
 using SuperCarga.Domain.Domain.Customers;
 using SuperCarga.Domain.Domain.Drivers;
+using SuperCarga.Domain.Domain.Finances;
 using SuperCarga.Domain.Domain.FreeEstimation;
 using SuperCarga.Domain.Domain.Jobs;
 using SuperCarga.Domain.Domain.Location;
@@ -54,6 +56,9 @@ namespace SuperCarga.Domain.Registrations
             //drivers
             services.AddScoped<IDriversService, DriversService>();
             services.AddScoped<IDriversDriversService, DriversDriversService>();
+
+            //finances
+            services.AddScoped<IFinancesService, FinancesService>();
 
             //free estimation
             services.AddScoped<IFreeEstimationService, FreeEstimationService>();

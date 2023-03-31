@@ -35,6 +35,8 @@ namespace SuperCarga.Persistence.Database.EntityConfigurations
             builder.Property(i => i.VerificationState).HasColumnName("verification_state");
 
             builder.HasOne(i => i.Finance).WithOne().HasForeignKey<Finance>(i => i.UserId);
+            builder.HasMany(i => i.FromPayments).WithOne().HasForeignKey(i => i.FromUserId);
+            builder.HasMany(i => i.ToPayments).WithOne().HasForeignKey(i => i.ToUserId);
 
             builder
                 .HasMany(x => x.Roles)
