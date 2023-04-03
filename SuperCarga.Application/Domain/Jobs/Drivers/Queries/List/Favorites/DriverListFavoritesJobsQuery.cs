@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SuperCarga.Application.Domain.Jobs.Drivers.Queries.List.Favorites
 {
-    public class DriverListFavoritesJobsRequest : ListRequestDto
+    public class DriverListFavoritesJobsRequest : DriverListJobRequest
     {
 
     }

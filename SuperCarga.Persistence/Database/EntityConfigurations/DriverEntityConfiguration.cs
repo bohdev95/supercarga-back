@@ -19,6 +19,7 @@ namespace SuperCarga.Persistence.Database.EntityConfigurations
             builder.Property(i => i.VehiculeTypeId).HasColumnName("vehicule_type_id");
             builder.Property(i => i.DrivingLicensePath).HasColumnName("driving_license_path");
             builder.Property(i => i.Contracts).HasColumnName("contracts");
+            builder.Property(i => i.Earnings).HasColumnName("earnings");
             builder.Property(i => i.RatedContracts).HasColumnName("rated_contracts");
             builder.Property(i => i.Rating).HasColumnName("rating");
 

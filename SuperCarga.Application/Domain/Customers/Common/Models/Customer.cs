@@ -16,5 +16,9 @@ namespace SuperCarga.Application.Domain.Customers.Common.Models
         public List<Proposal> FavoriteProposals { get; set; }
 
         public string? IdDocumentPath { get; set; }
+
+        public decimal Spends { get; set; }
+
+        public int FinalizedContracts { get; set; }
     }
 }

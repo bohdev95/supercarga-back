@@ -14,8 +14,8 @@ namespace SuperCarga.Application.Domain.Proposals.Common.Models
         public const string Canceled = "Canceled";
         public const string Closed = "Closed";
 
-        public static List<string> Active = new List<string> { Pending, Accepted, Hired };
+        public static List<string> Active = new List<string> { Pending, Accepted};
 
-        public static List<string> Archived = new List<string> { Canceled, Closed };
+        public static List<string> Archived = new List<string> { Canceled, Closed, Hired };
     }
 }

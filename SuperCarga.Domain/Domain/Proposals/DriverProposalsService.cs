@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SuperCarga.Application.Domain.Common.Dto;
+using SuperCarga.Application.Domain.Common.Model;
 using SuperCarga.Application.Domain.Costs.Abstraction;
 using SuperCarga.Application.Domain.Costs.Dto;
 using SuperCarga.Application.Domain.Customers.Driver.Dto;
@@ -128,31 +129,18 @@ namespace SuperCarga.Domain.Domain.Proposals
             return dto;
         }
 
-        public async Task<ListResponseDto<DriverProposalListItemDto>> ListActiveProposals(DriverListActiveProposalsQuery request)
-        {
-            var res = await ListProposals(request.User.DriverId.Value)
-                .Where(x => ProposalState.Active.Contains(x.State))
-                .Paginate(request.Data);
+        public async Task<ListResponseDto<DriverProposalListItemDto>> ListActiveProposals(DriverListActiveProposalsQuery request) => await ListProposals(request, ProposalState.Active);
 
-            return res;
-        }
+        public async Task<ListResponseDto<DriverProposalListItemDto>> ListArchivedProposals(DriverListArchivedProposalsQuery request) => await ListProposals(request, ProposalState.Archived);
 
-        public async Task<ListResponseDto<DriverProposalListItemDto>> ListArchivedProposals(DriverListArchivedProposalsQuery request)
-        {
-            var res = await ListProposals(request.User.DriverId.Value)
-                .Where(x => ProposalState.Archived.Contains(x.State))
-                .Paginate(request.Data);
-
-            return res;
-        }
-
-        private IQueryable<DriverProposalListItemDto> ListProposals(Guid driverId)
+        private async Task<ListResponseDto<DriverProposalListItemDto>> ListProposals<T>(UserRequest<T, ListResponseDto<DriverProposalListItemDto>> request, List<string> states) where T : DriverListProposalsRequest
         {
             var query = ctx.Proposals
                 .Include(x => x.Job)
                 .ThenInclude(x => x.Customer)
                 .ThenInclude(x => x.User)
-                .Where(x => x.DriverId == driverId)
+                .Where(x => x.DriverId == request.User.DriverId)
+                .Where(x => states.Contains(x.State))
                 .Select(x => new DriverProposalListItemDto
                 {
                     Id = x.Id,
@@ -166,10 +154,53 @@ namespace SuperCarga.Domain.Domain.Proposals
                     Origin = x.Job.GetOrigin(),
                     Customer = x.Job.Customer.GetDriverCustomerDto()
                 })
-                .OrderByDescending(x => x.Created)
                 .AsQueryable();
 
-            return query;
+            if (request.Data.JobId != null)
+            {
+                query = query.Where(x => x.JobId == request.Data.JobId).AsQueryable();
+            }
+
+            if (request.Data.CreatedFrom != null)
+            {
+                query = query.Where(x => x.Created >= request.Data.CreatedFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.CreatedTo != null)
+            {
+                query = query.Where(x => x.Created <= request.Data.CreatedTo.Value).AsQueryable();
+            }
+
+            if (request.Data.PickupFrom != null)
+            {
+                query = query.Where(x => x.PickupDate >= request.Data.PickupFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.PickupTo != null)
+            {
+                query = query.Where(x => x.PickupDate <= request.Data.PickupTo.Value).AsQueryable();
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Data.State))
+            {
+                query = query.Where(x => x.State == request.Data.State).AsQueryable();
+            }
+
+            if (request.Data.PricePerKmFrom != null)
+            {
+                query = query.Where(x => x.PricePerKm >= request.Data.PricePerKmFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.PricePerKmTo != null)
+            {
+                query = query.Where(x => x.PricePerKm <= request.Data.PricePerKmTo.Value).AsQueryable();
+            }
+
+            var proposals = await query
+                .OrderByDescending(x => x.Created)
+                .Paginate(request.Data);
+
+            return proposals;
         }
     }
 }

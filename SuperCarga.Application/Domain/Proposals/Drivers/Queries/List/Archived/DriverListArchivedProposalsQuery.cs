@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SuperCarga.Application.Domain.Proposals.Drivers.Queries.List.Archived
 {
-    public class DriverListArchivedProposalsRequest : ListRequestDto
+    public class DriverListArchivedProposalsRequest : DriverListProposalsRequest
     {
     }
 

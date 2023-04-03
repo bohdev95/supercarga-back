@@ -21,7 +21,4 @@ namespace SuperCarga.Application.Domain.Jobs.Customers.Queries.List.Active
             return response;
         }
     }
-
-
-
 }

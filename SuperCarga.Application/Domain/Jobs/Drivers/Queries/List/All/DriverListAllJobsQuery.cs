@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SuperCarga.Application.Domain.Jobs.Drivers.Queries.List.All
 {
-    public class DriverListAllJobsRequest : ListRequestDto
+    public class DriverListAllJobsRequest : DriverListJobRequest
     {
 
     }

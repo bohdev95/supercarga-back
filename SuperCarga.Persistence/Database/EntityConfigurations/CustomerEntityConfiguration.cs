@@ -17,6 +17,8 @@ namespace SuperCarga.Persistence.Database.EntityConfigurations
             builder.Property(i => i.Created).HasColumnName("created");
 
             builder.Property(i => i.IdDocumentPath).HasColumnName("id_document_path");
+            builder.Property(i => i.Spends).HasColumnName("spends");
+            builder.Property(i => i.FinalizedContracts).HasColumnName("finalized_contracts");
 
             builder.HasOne(i => i.User).WithOne().HasForeignKey<User>(c => c.CustomerId);
 

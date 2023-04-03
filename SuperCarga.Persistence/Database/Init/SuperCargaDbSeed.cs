@@ -504,6 +504,9 @@ namespace SuperCarga.Persistence.Database.Init
                         var driversSecondPayment = AddDriversPayment(contract.TotalPrice / 2, customerFin, customer, contract, driverFin, driver);
                         ctx.Payments.Add(driversSecondPayment);
 
+                        customer.Spends += contract.TotalPrice;
+                        customer.FinalizedContracts++;
+
                         ctx.SaveChanges();
                     }
                 }

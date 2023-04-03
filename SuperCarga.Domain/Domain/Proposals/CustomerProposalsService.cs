@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SuperCarga.Application.Domain.Common.Dto;
+using SuperCarga.Application.Domain.Common.Model;
 using SuperCarga.Application.Domain.Costs.Abstraction;
 using SuperCarga.Application.Domain.Costs.Dto;
 using SuperCarga.Application.Domain.Drivers.Customers.Dto;
@@ -29,59 +30,71 @@ namespace SuperCarga.Domain.Domain.Proposals
             this.costsService = costsService;
         }
 
-        public async Task<ListResponseDto<CustomerProposalListItemDto>> ListAllProposals(CustomerListAllProposalsQuery request)
-        {
-            var query = await ListProposals(request.User.CustomerId.Value, request.Data.JobId);
+        public async Task<ListResponseDto<CustomerProposalListItemDto>> ListAllProposals(CustomerListAllProposalsQuery request) => await ListProposals(request, false);
 
-            var res = await query
-                .Paginate(request.Data);
+        public async Task<ListResponseDto<CustomerProposalListItemDto>> ListFavoritesProposals(CustomerListFavoritesProposalsQuery request) => await ListProposals(request, true);
 
-            return res;
-        }
-
-        public async Task<ListResponseDto<CustomerProposalListItemDto>> ListFavoritesProposals(CustomerListFavoritesProposalsQuery request)
-        {
-            var query = await ListProposals(request.User.CustomerId.Value, request.Data.JobId);
-
-            var res = await query
-                .Where(x => x.AddedToFavorite)
-                .Paginate(request.Data);
-
-            return res;
-        }
-
-        private async Task<IQueryable<CustomerProposalListItemDto>> ListProposals(Guid customerId, Guid? jobId)
+        private async Task<ListResponseDto<CustomerProposalListItemDto>> ListProposals<T>(UserRequest<T, ListResponseDto<CustomerProposalListItemDto>> request, bool onlyFavorite) where T : CustomerListProposalsRequest
         {
             var query = ctx.Proposals
                 .Include(x => x.Driver)
                 .ThenInclude(x => x.User)
                 .Include(x => x.Job)
                 .ThenInclude(x => x.Contracts)
-                .Where(x => x.Job.CustomerId == customerId)
+                .Where(x => x.Job.CustomerId == request.User.CustomerId)
                 .Where(x => !x.Job.Contracts.Where(y => y.ProposalId == x.Id).Any())
+                .Select(x => new CustomerProposalListItemDto
+                {
+                    Id = x.Id,
+                    Created = x.Created,
+                    PricePerKm = x.PricePerKm,
+                    JobId = x.JobId,
+                    AddedToFavorite = x.AddedToFavoriteBy.Where(x => x.Id == request.User.CustomerId).Any(),
+                    Driver = x.Driver.GetCustomerDriverDto(),
+                    State = x.State
+                })
                 .AsQueryable();
 
-            if(jobId != null)
+            if(onlyFavorite)
             {
-                query = query
-                    .Where(x => x.JobId == jobId)
-                    .AsQueryable();
+                query = query.Where(x => x.AddedToFavorite).AsQueryable();
             }
 
-            var resQuery = query.Select(x => new CustomerProposalListItemDto
+            if(request.Data.JobId != null)
             {
-                Id = x.Id,
-                Created = x.Created,
-                PricePerKm = x.PricePerKm,
-                JobId = x.JobId,
-                AddedToFavorite = x.AddedToFavoriteBy.Where(x => x.Id == customerId).Any(),
-                Driver = x.Driver.GetCustomerDriverDto(),
-                State = x.State
-            })
-            .OrderByDescending(x => x.Created)
-            .AsQueryable();
+                query = query.Where(x => x.JobId == request.Data.JobId).AsQueryable();
+            }
 
-            return resQuery;
+            if (request.Data.CreatedFrom != null)
+            {
+                query = query.Where(x => x.Created >= request.Data.CreatedFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.CreatedTo != null)
+            {
+                query = query.Where(x => x.Created <= request.Data.CreatedTo.Value).AsQueryable();
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Data.State))
+            {
+                query = query.Where(x => x.State == request.Data.State).AsQueryable();
+            }
+
+            if (request.Data.PricePerKmFrom != null)
+            {
+                query = query.Where(x => x.PricePerKm >= request.Data.PricePerKmFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.PricePerKmTo != null)
+            {
+                query = query.Where(x => x.PricePerKm <= request.Data.PricePerKmTo.Value).AsQueryable();
+            }
+
+            var proposals = await query
+                .OrderByDescending(x => x.Created)
+                .Paginate(request.Data);
+
+            return proposals;
         }
 
         public async Task AddProposalToFavorites(AddProposalToFavoritesCommand request)

@@ -43,9 +43,9 @@ namespace SuperCarga.Domain.Domain.Contracts
             }
         }
 
-        protected async Task<ListResponseDto<ActiveContractListITemDto>> ListActiveContracts(ListRequestDto listRequest, Expression<Func<Contract, bool>> predicate)
+        protected async Task<ListResponseDto<ActiveContractListITemDto>> ListActiveContracts(ListContractRequest listRequest, Expression<Func<Contract, bool>> predicate)
         {
-            var contracts = await ctx.Contracts
+            var query = ctx.Contracts
                 .Include(x => x.Job)
                 .Include(x => x.History)
                 .Where(predicate)
@@ -62,15 +62,41 @@ namespace SuperCarga.Domain.Domain.Contracts
                     StateChanged = x.History.OrderByDescending(x => x.Created).Select(x => x.Created).FirstOrDefault(),
                     IsInDispute = false //TODO
                 })
+                .AsQueryable();
+
+            //TODO duplicated
+            if (listRequest.CreatedFrom != null)
+            {
+                query = query.Where(x => x.Created >= listRequest.CreatedFrom.Value).AsQueryable();
+            }
+
+            if (listRequest.CreatedTo != null)
+            {
+                query = query.Where(x => x.Created <= listRequest.CreatedTo.Value).AsQueryable();
+            }
+
+            if (!string.IsNullOrWhiteSpace(listRequest.State))
+            {
+                query = query.Where(x => x.State == listRequest.State).AsQueryable();
+            }
+
+            if (!string.IsNullOrWhiteSpace(listRequest.Search))
+            {
+                var search = listRequest.Search.ToLower().Trim();
+
+                query = query.Where(x => x.Tittle.Contains(search)).AsQueryable();
+            }
+
+            var contracts = await query
                 .OrderByDescending(x => x.Created)
                 .Paginate(listRequest);
 
             return contracts;
         }
 
-        protected async Task<ListResponseDto<FinishedContractListITemDto>> ListFinishedContracts(ListRequestDto listRequest, Expression<Func<Contract, bool>> predicate)
+        protected async Task<ListResponseDto<FinishedContractListITemDto>> ListFinishedContracts(ListContractRequest listRequest, Expression<Func<Contract, bool>> predicate)
         {
-            var contracts = await ctx.Contracts
+            var query = ctx.Contracts
                 .Include(x => x.Job)
                 .Include(x => x.History)
                 .Where(predicate)
@@ -87,6 +113,32 @@ namespace SuperCarga.Domain.Domain.Contracts
                     State = x.State,
                     StateChanged = x.History.OrderByDescending(x => x.Created).Select(x => x.Created).FirstOrDefault(),
                 })
+                .AsQueryable();
+
+            //TODO duplicated
+            if (listRequest.CreatedFrom != null)
+            {
+                query = query.Where(x => x.Created >= listRequest.CreatedFrom.Value).AsQueryable();
+            }
+
+            if (listRequest.CreatedTo != null)
+            {
+                query = query.Where(x => x.Created <= listRequest.CreatedTo.Value).AsQueryable();
+            }
+
+            if (!string.IsNullOrWhiteSpace(listRequest.State))
+            {
+                query = query.Where(x => x.State == listRequest.State).AsQueryable();
+            }
+
+            if(!string.IsNullOrWhiteSpace(listRequest.Search))
+            {
+                var search = listRequest.Search.ToLower().Trim();
+
+                query = query.Where(x => x.Tittle.Contains(search)).AsQueryable();
+            }
+
+            var contracts = await query
                 .OrderByDescending(x => x.Created)
                 .Paginate(listRequest);
 

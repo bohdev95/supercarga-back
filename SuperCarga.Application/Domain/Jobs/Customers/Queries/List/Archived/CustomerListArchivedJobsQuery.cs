@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SuperCarga.Application.Domain.Jobs.Customers.Queries.List.Archived
 {
-    public class CustomerListArchivedJobsRequest : ListRequestDto
+    public class CustomerListArchivedJobsRequest : CustomerListJobRequest
     {
     }
 

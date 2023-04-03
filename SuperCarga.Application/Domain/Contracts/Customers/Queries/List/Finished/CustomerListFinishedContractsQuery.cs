@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SuperCarga.Application.Domain.Contracts.Customers.Queries.List.Finished
 {
-    public class CustomerListFinishedContractsRequest : ListRequestDto
+    public class CustomerListFinishedContractsRequest : ListContractRequest
     {
     }
 

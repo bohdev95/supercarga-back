@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SuperCarga.Application.Domain.Common.Abstraction;
 using SuperCarga.Application.Domain.Common.Dto;
+using SuperCarga.Application.Domain.Common.Model;
 using SuperCarga.Application.Domain.Costs.Abstraction;
 using SuperCarga.Application.Domain.Costs.Dto;
 using SuperCarga.Application.Domain.Jobs.Common.Models;
@@ -154,32 +155,16 @@ namespace SuperCarga.Domain.Domain.Jobs
             await ctx.SaveChangesAsync();
         }
 
-        public async Task<ListResponseDto<CustomerJobListItemDto>> ListActiveJobs(CustomerListActiveJobsQuery request)
-        {
-            var query = ListJobs(request.User.CustomerId.Value, JobState.Active);
+        public async Task<ListResponseDto<CustomerJobListItemDto>> ListActiveJobs(CustomerListActiveJobsQuery request) => await ListJobs(request, JobState.Active);
 
-            var res = await query
-                .Paginate(request.Data);
+        public async Task<ListResponseDto<CustomerJobListItemDto>> ListArchivedJobs(CustomerListArchivedJobsQuery request) => await ListJobs(request, JobState.Closed);
 
-            return res;
-        }
-
-        public async Task<ListResponseDto<CustomerJobListItemDto>> ListArchivedJobs(CustomerListArchivedJobsQuery request)
-        {
-            var query = ListJobs(request.User.CustomerId.Value, JobState.Closed);
-
-            var res = await query
-                .Paginate(request.Data);
-
-            return res;
-        }
-
-        private IQueryable<CustomerJobListItemDto> ListJobs(Guid customerId, string state)
+        private async Task<ListResponseDto<CustomerJobListItemDto>> ListJobs<T>(UserRequest<T, ListResponseDto<CustomerJobListItemDto>> request, string state) where T : CustomerListJobRequest
         {
             var query = ctx.Jobs
                 .Include(x => x.Proposals)
                 .Include(x => x.Contracts)
-                .Where(x => x.CustomerId == customerId)
+                .Where(x => x.CustomerId == request.User.CustomerId)
                 .Where(x => x.State == state)
                 .Select(x => new CustomerJobListItemDto
                 {
@@ -190,10 +175,30 @@ namespace SuperCarga.Domain.Domain.Jobs
                     NewProposals = x.Proposals.Where(y => !y.Checked).Count(),
                     Hired = x.Contracts.Count()
                 })
-                .OrderByDescending(x => x.Created)
                 .AsQueryable();
 
-            return query;
+            if(request.Data.CreatedFrom != null)
+            {
+                query = query.Where(x => x.Created >= request.Data.CreatedFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.CreatedTo != null)
+            {
+                query = query.Where(x => x.Created <= request.Data.CreatedTo.Value).AsQueryable();
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Data.Search))
+            {
+                var search = request.Data.Search.ToLower().Trim();
+
+                query = query.Where(x => x.Tittle.Contains(search)).AsQueryable();
+            }
+
+            var jobs = await query
+                .OrderByDescending(x => x.Created)
+                .Paginate(request.Data);
+
+            return jobs;
         }
 
     }

@@ -9,9 +9,8 @@ using System.Threading.Tasks;
 
 namespace SuperCarga.Application.Domain.Proposals.Customers.Queries.List.Favorites
 {
-    public class CustomerListFavoritesProposalsRequest : ListRequestDto
+    public class CustomerListFavoritesProposalsRequest : CustomerListProposalsRequest
     {
-        public Guid? JobId { get; set; }
     }
 
     public class CustomerListFavoritesProposalsQuery : UserRequest<CustomerListFavoritesProposalsRequest, ListResponseDto<CustomerProposalListItemDto>>

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SuperCarga.Application.Domain.Common.Dto;
+using SuperCarga.Application.Domain.Common.Model;
 using SuperCarga.Application.Domain.Customers.Driver.Dto;
 using SuperCarga.Application.Domain.Jobs.Drivers.Abstraction;
 using SuperCarga.Application.Domain.Jobs.Drivers.Commands.AddToFavorites;
@@ -96,31 +97,14 @@ namespace SuperCarga.Domain.Domain.Jobs
             await ctx.SaveChangesAsync();
         }
 
-        public async Task<ListResponseDto<DriverJobListItemDto>> ListAllJobs(DriverListAllJobsQuery request)
-        {
-            var query = await ListJobs(request.User.DriverId.Value);
+        public async Task<ListResponseDto<DriverJobListItemDto>> ListAllJobs(DriverListAllJobsQuery request) => await ListJobs(request, false);
 
-            var res = await query
-                .Paginate(request.Data);
+        public async Task<ListResponseDto<DriverJobListItemDto>> ListFavoritesJobs(DriverListFavoritesJobsQuery request) => await ListJobs(request, true);
 
-            return res;
-        }
-
-        public async Task<ListResponseDto<DriverJobListItemDto>> ListFavoritesJobs(DriverListFavoritesJobsQuery request)
-        {
-            var query = await ListJobs(request.User.DriverId.Value);
-
-            var res = await query
-                .Where(x => x.AddedToFavorite)
-                .Paginate(request.Data);
-
-            return res;
-        }
-
-        private async Task<IQueryable<DriverJobListItemDto>> ListJobs(Guid driverId)
+        private async Task<ListResponseDto<DriverJobListItemDto>> ListJobs<T>(UserRequest<T, ListResponseDto<DriverJobListItemDto>> request, bool onlyFavorites) where T : DriverListJobRequest
         {
             var driverVehiculeTypeId = await ctx.Drivers
-                .Where(x => x.Id == driverId)
+                .Where(x => x.Id == request.User.DriverId.Value)
                 .Select(x => x.VehiculeTypeId)
                 .FirstOrDefaultAsync();
 
@@ -134,9 +118,9 @@ namespace SuperCarga.Domain.Domain.Jobs
                 .Select(x => new
                 {
                     job = x,
-                    proposalAlreadyAdded = x.Proposals.Where(x => x.DriverId == driverId).Any(),
-                    addedToFavorite = x.AddedToFavoriteBy.Where(x => x.Id == driverId).Any(),
-                    alreadyHired = x.Contracts.Where(x => x.DriverId == driverId).Any()
+                    proposalAlreadyAdded = x.Proposals.Where(x => x.DriverId == request.User.DriverId.Value).Any(),
+                    addedToFavorite = x.AddedToFavoriteBy.Where(x => x.Id == request.User.DriverId.Value).Any(),
+                    alreadyHired = x.Contracts.Where(x => x.DriverId == request.User.DriverId.Value).Any()
                 })
                 .Where(x => !x.alreadyHired)
                 .Select(x => new DriverJobListItemDto
@@ -154,10 +138,65 @@ namespace SuperCarga.Domain.Domain.Jobs
                     Destination = x.job.GetDestination(),
                     Customer = x.job.Customer.GetDriverCustomerDto()
                 })
-                .OrderByDescending(x => x.Created)
                 .AsQueryable();
 
-            return query;
+            if(onlyFavorites)
+            {
+                query = query.Where(x => x.AddedToFavorite).AsQueryable();
+            }
+
+            if (request.Data.CreatedFrom != null)
+            {
+                query = query.Where(x => x.Created >= request.Data.CreatedFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.CreatedTo != null)
+            {
+                query = query.Where(x => x.Created <= request.Data.CreatedTo.Value).AsQueryable();
+            }
+
+            if (request.Data.PickupFrom != null)
+            {
+                query = query.Where(x => x.PickupDate >= request.Data.PickupFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.PickupTo != null)
+            {
+                query = query.Where(x => x.PickupDate <= request.Data.PickupTo.Value).AsQueryable();
+            }
+
+            if (request.Data.PricePerKmFrom != null)
+            {
+                query = query.Where(x => x.PricePerKm >= request.Data.PricePerKmFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.PricePerKmTo != null)
+            {
+                query = query.Where(x => x.PricePerKm <= request.Data.PricePerKmTo.Value).AsQueryable();
+            }
+
+            if (request.Data.DistanceFrom != null)
+            {
+                query = query.Where(x => x.Distance >= request.Data.DistanceFrom.Value).AsQueryable();
+            }
+
+            if (request.Data.DistanceTo != null)
+            {
+                query = query.Where(x => x.Distance <= request.Data.DistanceTo.Value).AsQueryable();
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Data.Search))
+            {
+                var search = request.Data.Search.ToLower().Trim();
+
+                query = query.Where(x => x.Tittle.Contains(search)).AsQueryable();
+            }
+
+            var jobs = await query
+                .OrderByDescending(x => x.Created)
+                .Paginate(request.Data);
+
+            return jobs;
         }
     }
 }

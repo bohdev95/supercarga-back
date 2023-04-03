@@ -98,6 +98,12 @@ namespace SuperCarga.Domain.Domain.Contracts
 
             await driversService.UpdateDriverRates(contract.DriverId, false);
 
+            var customer = await ctx.Customers
+                .Where(x => x.Id == request.User.CustomerId)
+                .FirstAsync();
+            customer.Spends += contract.TotalPrice;
+            customer.FinalizedContracts++;
+
             financesService.PaymentLock(() =>
             {
                 financesService.Pay(contract.Customer.User.Id, contract.Driver.User.Id, request.Data.Payment, FinanceOperation.Transfer, contract.Id, false);

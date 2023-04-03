@@ -50,6 +50,8 @@ create table sc.customers (
 	id uuid,
 	created timestamp without time zone not null default now(),
 	id_document_path varchar,
+	spends numeric not null,
+	finalized_contracts integer not null,
 	constraint PK_customers primary key (id)
 );
 GRANT ALL PRIVILEGES ON TABLE sc.customers TO sc;
@@ -62,6 +64,7 @@ create table sc.drivers (
 	contracts integer not null,
 	rated_contracts integer not null,
 	rating numeric,
+	earnings numeric not null,
 	constraint PK_drivers primary key (id),
 	constraint FK_drivers_vehicule_types foreign key (vehicule_type_id) references sc.vehicule_types (id) match simple
 );

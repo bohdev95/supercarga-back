@@ -21,6 +21,8 @@ namespace SuperCarga.Application.Domain.Drivers.Common.Models
 
         public int Contracts { get; set; }
 
+        public decimal Earnings { get; set; }
+
         public int RatedContracts { get; set; }
 
         public decimal? Rating { get; set; }

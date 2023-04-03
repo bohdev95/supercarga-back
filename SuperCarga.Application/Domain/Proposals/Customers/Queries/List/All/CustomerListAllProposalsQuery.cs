@@ -9,9 +9,8 @@ using System.Threading.Tasks;
 
 namespace SuperCarga.Application.Domain.Proposals.Customers.Queries.List.All
 {
-    public class CustomerListAllProposalsRequest : ListRequestDto
-    {
-        public Guid? JobId { get; set; }
+    public class CustomerListAllProposalsRequest : CustomerListProposalsRequest
+    { 
     }
 
     public class CustomerListAllProposalsQuery : UserRequest<CustomerListAllProposalsRequest, ListResponseDto<CustomerProposalListItemDto>>
