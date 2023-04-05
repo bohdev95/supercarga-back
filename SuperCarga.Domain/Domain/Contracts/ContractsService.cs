@@ -67,12 +67,12 @@ namespace SuperCarga.Domain.Domain.Contracts
             //TODO duplicated
             if (listRequest.CreatedFrom != null)
             {
-                query = query.Where(x => x.Created >= listRequest.CreatedFrom.Value).AsQueryable();
+                query = query.Where(x => x.Created.Date >= listRequest.CreatedFrom.Value.Date).AsQueryable();
             }
 
             if (listRequest.CreatedTo != null)
             {
-                query = query.Where(x => x.Created <= listRequest.CreatedTo.Value).AsQueryable();
+                query = query.Where(x => x.Created.Date <= listRequest.CreatedTo.Value.Date).AsQueryable();
             }
 
             if (!string.IsNullOrWhiteSpace(listRequest.State))
@@ -106,24 +106,24 @@ namespace SuperCarga.Domain.Domain.Contracts
                     Id = x.Id,
                     Created = x.Created,
                     Rating = x.Rating.Value,
-                    Price = x.Price,
                     Tittle = x.Job.Tittle,
                     Origin = x.Job.GetOrigin(),
                     Destination = x.Job.GetDestination(),
                     State = x.State,
                     StateChanged = x.History.OrderByDescending(x => x.Created).Select(x => x.Created).FirstOrDefault(),
+                    ContractValue = x.TotalPrice
                 })
                 .AsQueryable();
 
             //TODO duplicated
             if (listRequest.CreatedFrom != null)
             {
-                query = query.Where(x => x.Created >= listRequest.CreatedFrom.Value).AsQueryable();
+                query = query.Where(x => x.Created.Date >= listRequest.CreatedFrom.Value.Date).AsQueryable();
             }
 
             if (listRequest.CreatedTo != null)
             {
-                query = query.Where(x => x.Created <= listRequest.CreatedTo.Value).AsQueryable();
+                query = query.Where(x => x.Created.Date <= listRequest.CreatedTo.Value.Date).AsQueryable();
             }
 
             if (!string.IsNullOrWhiteSpace(listRequest.State))

@@ -66,6 +66,7 @@ namespace SuperCarga.Domain.Domain.Drivers
             driver.Contracts = driverContractsCount;
             driver.RatedContracts = driverRatesCount;
             driver.Rating = rating;
+            driver.Earnings = earnings;
 
             if(save)
             {

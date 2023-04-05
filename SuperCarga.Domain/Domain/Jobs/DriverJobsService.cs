@@ -147,22 +147,22 @@ namespace SuperCarga.Domain.Domain.Jobs
 
             if (request.Data.CreatedFrom != null)
             {
-                query = query.Where(x => x.Created >= request.Data.CreatedFrom.Value).AsQueryable();
+                query = query.Where(x => x.Created.Date >= request.Data.CreatedFrom.Value.Date).AsQueryable();
             }
 
             if (request.Data.CreatedTo != null)
             {
-                query = query.Where(x => x.Created <= request.Data.CreatedTo.Value).AsQueryable();
+                query = query.Where(x => x.Created.Date <= request.Data.CreatedTo.Value.Date).AsQueryable();
             }
 
             if (request.Data.PickupFrom != null)
             {
-                query = query.Where(x => x.PickupDate >= request.Data.PickupFrom.Value).AsQueryable();
+                query = query.Where(x => x.PickupDate.Date >= request.Data.PickupFrom.Value.Date).AsQueryable();
             }
 
             if (request.Data.PickupTo != null)
             {
-                query = query.Where(x => x.PickupDate <= request.Data.PickupTo.Value).AsQueryable();
+                query = query.Where(x => x.PickupDate.Date <= request.Data.PickupTo.Value.Date).AsQueryable();
             }
 
             if (request.Data.PricePerKmFrom != null)

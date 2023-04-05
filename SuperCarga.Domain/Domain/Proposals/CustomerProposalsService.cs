@@ -67,12 +67,12 @@ namespace SuperCarga.Domain.Domain.Proposals
 
             if (request.Data.CreatedFrom != null)
             {
-                query = query.Where(x => x.Created >= request.Data.CreatedFrom.Value).AsQueryable();
+                query = query.Where(x => x.Created.Date >= request.Data.CreatedFrom.Value.Date).AsQueryable();
             }
 
             if (request.Data.CreatedTo != null)
             {
-                query = query.Where(x => x.Created <= request.Data.CreatedTo.Value).AsQueryable();
+                query = query.Where(x => x.Created.Date <= request.Data.CreatedTo.Value.Date).AsQueryable();
             }
 
             if (!string.IsNullOrWhiteSpace(request.Data.State))

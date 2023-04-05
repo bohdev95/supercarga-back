@@ -15,8 +15,6 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Dto
 
         public decimal Rating { get; set; }
 
-        public decimal Price { get; set; }
-
         public string Tittle { get; set; }
 
         public AddressDto Origin { get; set; }
@@ -26,5 +24,7 @@ namespace SuperCarga.Application.Domain.Contracts.Common.Dto
         public string State { get; set; }
 
         public DateTime StateChanged { get; set; }
+
+        public decimal ContractValue { get; set; }
     }
 }
