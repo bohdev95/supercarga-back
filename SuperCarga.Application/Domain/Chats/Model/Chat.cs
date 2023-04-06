@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using SuperCarga.Application.Domain.Common.Model;
+﻿using SuperCarga.Application.Domain.Common.Model;
 using SuperCarga.Application.Domain.Users.Models;
 using System;
 using System.Collections.Generic;
@@ -19,13 +18,5 @@ namespace SuperCarga.Application.Domain.Chats.Model
         public DateTime? DeletedDateTime { get; set; }
         public DateTime UpdatedDateTime { get; set; }
         public User? FromUser { get; set; }
-    }
-
-    public class ChatAttachment
-    {
-        public Guid Id { get; set; }
-        public Guid ChatId { get; set; }
-        public string FileName { get; set; }
-        public byte[] FileData { get; set; }
     }
 }

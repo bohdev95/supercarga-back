@@ -1,4 +1,4 @@
-﻿namespace SuperCarga.Application.Domain.Chats.Queries.GetChat
+﻿namespace SuperCarga.Application.Domain.Chats.Dto
 {
     public class UserChatsDto
     {

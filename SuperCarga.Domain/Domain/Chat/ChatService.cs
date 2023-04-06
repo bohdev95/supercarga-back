@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SuperCarga.Application.Domain.Chats.Queries.GetChat;
+using SuperCarga.Application.Domain.Chats.Dto;
 using SuperCarga.Application.Domain.Chats.Model;
 using SuperCarga.Application.Domain.Chats.Abstraction;
 using SuperCarga.Persistence.Database;
-using SuperCarga.Application.Domain.Chats.Commands;
+using SuperCarga.Application.Domain.Chats.Commands.CreateMessage;
 
 namespace SuperCarga.Domain.Domain.Services
 {
@@ -41,7 +41,7 @@ namespace SuperCarga.Domain.Domain.Services
         public async Task<List<Chat>> GetUserToUserChatsAsync(Guid fromUserId, Guid toUserId, DateTime? lastDateTime) {
 
             var chatsQuery = this._superCargaContext.Chats.AsNoTracking()
-                     .Where(c => c.FromUserId == fromUserId && c.ToUserId == toUserId && c.DeletedDateTime == null);
+                .Where(c => c.FromUserId == fromUserId && c.ToUserId == toUserId && c.DeletedDateTime == null);
 
             if (lastDateTime.HasValue)
             {
@@ -53,7 +53,7 @@ namespace SuperCarga.Domain.Domain.Services
         }
 
         //add chat
-        public async Task<CreateChatResponse> CreateChatMessage(CreateChatCommand command, CancellationToken cancellationToken) {
+        public async Task<CreateMessageCommandResponse> CreateChatMessage(CreateMessageCommand command, CancellationToken cancellationToken) {
 
             var id = Guid.NewGuid();
 
@@ -69,7 +69,7 @@ namespace SuperCarga.Domain.Domain.Services
             await this._superCargaContext.Chats.AddAsync(message);
             await this._superCargaContext.SaveChangesAsync(cancellationToken);
 
-            return new CreateChatResponse { Id = id };
+            return new CreateMessageCommandResponse { Id = id };
         }
 
         //add chat with chatattachment

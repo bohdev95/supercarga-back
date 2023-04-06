@@ -10,25 +10,22 @@ using SuperCarga.Domain.Domain.Users.Auth;
 using System.Net.WebSockets;
 using System.Text;
 
-namespace SuperCarga.Api.Controllers
+namespace SuperCarga.Api.Controllers.Chat
 {
     //[Authorize]
     public class ChatWebSocketController : ControllerBase
     {
-        private readonly IMediator _mediator;
         private readonly IAuthService _authService;
-        private readonly ILogger _logger;
         private readonly IChatService _chatService;
-        public ChatWebSocketController(IMediator mediator, IAuthService authService, ILogger logger, IChatService chatService)
+        public ChatWebSocketController(IAuthService authService, IChatService chatService)
         {
-            this._mediator = mediator;
-            this._authService= authService;
-            this._logger = logger;
-            this._chatService = chatService;
+            _authService = authService;
+            _chatService = chatService;
         }
 
         [HttpGet("ws/chats")]
-        public async Task GetUserChats() {
+        public async Task GetUserChats()
+        {
 
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
@@ -39,11 +36,13 @@ namespace SuperCarga.Api.Controllers
 
                 DateTime? lastUpdatedDatetime = null;
 
-                while(user != null) {
+                while (user != null)
+                {
 
-                    var results = await this._chatService.GetUserChatsAsync(user.Id, lastUpdatedDatetime);
-                    
-                    if (results.Count > 0) {
+                    var results = await _chatService.GetUserChatsAsync(user.Id, lastUpdatedDatetime);
+
+                    if (results.Count > 0)
+                    {
 
                         lastUpdatedDatetime = results[results.Count - 1].LastUpdatedDateTime;
 
@@ -52,11 +51,12 @@ namespace SuperCarga.Api.Controllers
 
                         await websocket.SendAsync(arraySegment, WebSocketMessageType.Text, true, CancellationToken.None);
                     }
-               
+
                     Thread.Sleep(1000);
-                } 
+                }
             }
-            else {
+            else
+            {
                 HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
             }
         }
@@ -78,7 +78,7 @@ namespace SuperCarga.Api.Controllers
                 while (user != null)
                 {
 
-                    var results = await this._chatService.GetUserToUserChatsAsync(user.Id,ToUserId, lastUpdatedDatetime);
+                    var results = await _chatService.GetUserToUserChatsAsync(user.Id, ToUserId, lastUpdatedDatetime);
 
                     if (results.Count > 0)
                     {

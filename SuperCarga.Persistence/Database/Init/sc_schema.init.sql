@@ -13,6 +13,8 @@ drop table if exists sc.driver_favorite_jobs;
 drop table if exists sc.job_additional_costs;
 drop table if exists sc.jobs;
 drop table if exists sc.free_estimation_history;
+drop table if exists sc.chat_attachments;
+drop table if exists sc.chats;
 drop table if exists sc.users_roles;
 drop table if exists sc.users;
 drop table if exists sc.roles;
@@ -20,8 +22,6 @@ drop table if exists sc.drivers;
 drop table if exists sc.customers;
 drop table if exists sc.vehicule_types;
 drop table if exists sc.costs;
-drop table if exists sc.chats;
-drop table if exists sc.chat_attachments;
 
 create table sc.costs (
 	id uuid,
@@ -110,6 +110,32 @@ create table sc.users_roles (
     CONSTRAINT FK_users_roles_roles FOREIGN KEY (role_id) REFERENCES sc.roles (id) match simple
 );
 GRANT ALL PRIVILEGES ON TABLE sc.users_roles TO sc;
+
+CREATE TABLE sc.chats (
+	id uuid NOT NULL,
+	from_user_id uuid NOT NULL,
+	to_user_id uuid NOT NULL,
+	chat_message text NOT NULL,
+	has_attachment bool NOT NULL,
+	message_read_datetime timestamp NULL,
+	created timestamp NOT NULL DEFAULT now(),
+	deleted_datetime timestamp NULL,
+	updated_datetime timestamp NOT NULL DEFAULT now(),
+	CONSTRAINT PK_chats PRIMARY KEY (id),
+	CONSTRAINT FK_to_user_id FOREIGN KEY(from_user_id) REFERENCES sc.users(id)
+);
+GRANT ALL PRIVILEGES ON TABLE sc.chats TO sc;
+
+
+CREATE TABLE sc.chat_attachments (
+	id uuid NOT NULL,
+	chat_id uuid NOT NULL,
+	file_name text NOT NULL,
+	file_data bytea NOT NULL,
+	CONSTRAINT PK_chat_attachments PRIMARY KEY (id), 
+	CONSTRAINT FK_chat_id FOREIGN KEY (chat_id) REFERENCES sc.chats(id) ON DELETE CASCADE
+);
+GRANT ALL PRIVILEGES ON TABLE sc.chat_attachments TO sc;
 
 create table sc.free_estimation_history (
 	id uuid,
@@ -300,28 +326,4 @@ create table sc.payments (
 );
 GRANT ALL PRIVILEGES ON TABLE sc.payments TO sc;
 
-CREATE TABLE sc.chats (
-	id uuid NOT NULL,
-	from_user_id uuid NOT NULL,
-	to_user_id uuid NOT NULL,
-	chat_message text NOT NULL,
-	has_attachment bool NOT NULL,
-	message_read_datetime timestamp NULL,
-	created timestamp NOT NULL DEFAULT now(),
-	deleted_datetime timestamp NULL,
-	updated_datetime timestamp NOT NULL DEFAULT now(),
-	CONSTRAINT PK_chats PRIMARY KEY (id),
-	CONSTRAINT FK_to_user_id FOREIGN KEY(from_user_id) REFERENCES sc.users(id)
-);
-GRANT ALL PRIVILEGES ON TABLE sc.chats TO sc;
 
-
-CREATE TABLE sc.chat_attachments (
-	id uuid NOT NULL,
-	chat_id uuid NOT NULL,
-	file_name text NOT NULL,
-	file_data bytea NOT NULL,
-	CONSTRAINT PK_chat_attachments PRIMARY KEY (id), 
-	CONSTRAINT FK_chat_id FOREIGN KEY (chat_id) REFERENCES sc.chats(id) ON DELETE CASCADE
-);
-GRANT ALL PRIVILEGES ON TABLE sc.chat_attachments TO sc;
