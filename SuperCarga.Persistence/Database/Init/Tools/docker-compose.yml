@@ -1,17 +1,20 @@
-version: '3.8'
+version: '3.9'
 services:
   db:
     image: postgres:14.1-alpine
     restart: always
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=!Password1
+        POSTGRES_USER: sc
+        POSTGRES_PASSWORD: mvldfkwoclada
+        POSTGRES_DB: SuperCarga
+        POSTGRES_SCHEMA: sc
     ports:
       - '5432:5432'
     container_name: supercarga-db
     volumes: 
       - c:/opt/supercarga/data:/var/lib/postgresql/data
       - c:/opt/supercarga/backup:/var/lib/postgresql/backup
+      - ../sc_schema.init.sql:/docker-entrypoint-initdb.d/init.sql
 volumes:
   db:
     driver: local

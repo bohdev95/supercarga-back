@@ -5,6 +5,8 @@ using SuperCarga.Application.Domain.Drivers.Common.Abstraction;
 using SuperCarga.Application.Settings;
 using SuperCarga.Persistence.Database;
 using SuperCarga.Persistence.Database.Init;
+using Microsoft.Extensions.Hosting;
+
 
 namespace SuperCarga.Persistence.Registrations
 {
@@ -14,8 +16,10 @@ namespace SuperCarga.Persistence.Registrations
         {
             services.AddDbContext<SuperCargaContext>(options => options.UseNpgsql(cs));
 
-            //services.SeedDb();
-
+            if (IsDevelopment()) {
+                services.SeedDb();
+            }
+            
             return services;
         }
 
@@ -27,7 +31,7 @@ namespace SuperCarga.Persistence.Registrations
             var imageStoreConfig = sp.GetService<ImageStoresConfig>();
             var costsService = sp.GetService<ICostsService>();
             var driversService = sp.GetService<IDriversService>();
-
+           
             ctx.Database.EnsureCreated();
 
             ctx.AddCosts();
@@ -35,6 +39,11 @@ namespace SuperCarga.Persistence.Registrations
             ctx.AddRoles();
             ctx.AddUsers(imageStoreConfig.Users);
             ctx.AddJobs(costsService, driversService, 1000); 
+        }
+
+        private static bool IsDevelopment()
+        {
+            return Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == Environments.Development;
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using SuperCarga.Application.Domain.Chats.Abstraction;
 using SuperCarga.Application.Domain.Common.Abstraction;
 using SuperCarga.Application.Domain.Contracts.Common.Abstraction;
 using SuperCarga.Application.Domain.Contracts.Customers.Abstraction;
@@ -29,6 +30,7 @@ using SuperCarga.Domain.Domain.FreeEstimation;
 using SuperCarga.Domain.Domain.Jobs;
 using SuperCarga.Domain.Domain.Location;
 using SuperCarga.Domain.Domain.Proposals;
+using SuperCarga.Domain.Domain.Services;
 using SuperCarga.Domain.Domain.Users;
 using SuperCarga.Domain.Domain.VehiculeTypes;
 
@@ -83,10 +85,12 @@ namespace SuperCarga.Domain.Registrations
             //vehiculeTypes
             services.AddScoped<IVehiculeTypesService, VehiculeTypesService>();
 
+
+            //chats
+            services.AddScoped<IChatService, ChatService>();
+
             return services;
         }
-
-        
 
     }
 }

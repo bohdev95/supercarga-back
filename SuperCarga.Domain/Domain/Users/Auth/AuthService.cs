@@ -25,7 +25,6 @@ namespace SuperCarga.Domain.Domain.Users.Auth
             var principal = tokenService.GetPrincipal(accesToken);
             var userName = principal.Identity.Name;
             var user = await userManager.FindByNameAsync(userName);
-
             return user;
         }
 
