@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using SuperCarga.Application.Domain.Chats.Model;
 using SuperCarga.Application.Domain.Contracts.Common.Models;
 using SuperCarga.Application.Domain.Costs.Model;
 using SuperCarga.Application.Domain.Customers.Common.Models;
@@ -32,11 +33,13 @@ namespace SuperCarga.Persistence.Database
         public DbSet<Customer> Customers { get; set; }
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Cost> Costs { get; set; }
+        public DbSet<Chat> Chats { get; set; }
+        public DbSet<ChatAttachment> ChatAttachments { get; set; }
 
 
         public SuperCargaContext(DbContextOptions<SuperCargaContext> options) : base(options)
         {
-
+           
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -60,6 +63,14 @@ namespace SuperCarga.Persistence.Database
             modelBuilder.ApplyConfiguration(new DriverFavoriteJobEntityConfiguration());
             modelBuilder.ApplyConfiguration(new CostEntityConfiguration());
             modelBuilder.ApplyConfiguration(new ContractAdditionalCostEntityConfiguration());
+            modelBuilder.ApplyConfiguration(new ChatEntityConfiguration());
+            modelBuilder.ApplyConfiguration(new ChatAttachmentsEntityConfiguration());
         }
+
+        //todo: To save time this will automaticly map an entity property to postgres column based on the following convention: CreatedDate > created_date
+        //needs - to verify all entites are following same covention
+        //needs - to verify what package version can be added
+        //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) => optionsBuilder.UseSnakeCaseNamingConvention();
+
     }
 }

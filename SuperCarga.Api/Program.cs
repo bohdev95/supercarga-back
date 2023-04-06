@@ -38,5 +38,5 @@ app.UseAuthorization();
 app.MapControllers();
 app.UseCors("Open");
 app.UseMiddleware<ExceptionHandlerMiddleware>();
-
+app.UseWebSockets();
 app.Run();

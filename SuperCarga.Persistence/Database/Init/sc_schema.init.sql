@@ -298,3 +298,28 @@ create table sc.payments (
 );
 GRANT ALL PRIVILEGES ON TABLE sc.payments TO sc;
 
+CREATE TABLE sc.chats (
+	id uuid NOT NULL,
+	from_user_id uuid NOT NULL,
+	to_user_id uuid NOT NULL,
+	chat_message text NOT NULL,
+	has_attachment bool NOT NULL,
+	message_read_datetime timestamp NULL,
+	created timestamp NOT NULL DEFAULT now(),
+	deleted_datetime timestamp NULL,
+	updated_datetime timestamp NOT NULL DEFAULT now(),
+	CONSTRAINT PK_chats PRIMARY KEY (id),
+	CONSTRAINT FK_to_user_id FOREIGN KEY(from_user_id) REFERENCES sc.users(id)
+);
+GRANT ALL PRIVILEGES ON TABLE sc.chats TO sc;
+
+
+CREATE TABLE sc.chat_attachments (
+	id uuid NOT NULL,
+	chat_id uuid NOT NULL,
+	file_name text NOT NULL,
+	file_data bytea NOT NULL,
+	CONSTRAINT PK_chat_attachments PRIMARY KEY (id), 
+	CONSTRAINT FK_chat_id FOREIGN KEY (chat_id) REFERENCES sc.chats(id) ON DELETE CASCADE
+);
+GRANT ALL PRIVILEGES ON TABLE sc.chat_attachments TO sc;
