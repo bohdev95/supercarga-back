@@ -20,6 +20,8 @@ drop table if exists sc.drivers;
 drop table if exists sc.customers;
 drop table if exists sc.vehicule_types;
 drop table if exists sc.costs;
+drop table if exists sc.chats;
+drop table if exists sc.chat_attachments;
 
 create table sc.costs (
 	id uuid,
